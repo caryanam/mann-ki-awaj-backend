@@ -2,9 +2,7 @@ package com.mka.controller;
 
 
 
-import com.mka.dto.request.LoginRequest;
-
-import com.mka.dto.request.RegisterRequest;
+import com.mka.dto.request.*;
 
 import com.mka.dto.responce.ApiResponse;
 
@@ -14,6 +12,7 @@ import com.mka.dto.responce.LoginResponseDTO;
 
 import com.mka.service.AuthService;
 
+import com.mka.service.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import org.springframework.web.bind.annotation.RestController;
+import com.mka.service.MobileVerificationService;
 
 
 
@@ -45,6 +45,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
 
+    private final EmailVerificationService emailVerificationService;
+    private final MobileVerificationService mobileVerificationService;
 
     private final AuthService authService;
 
@@ -102,6 +104,60 @@ public class AuthController {
 
         );
 
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+
+        emailVerificationService.verifyEmail(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Email verified successfully.")
+                        .build()
+        );
+    }
+    @PostMapping("/verify-mobile")
+    public ResponseEntity<ApiResponse<Void>> verifyMobile(
+            @Valid @RequestBody VerifyMobileRequest request) {
+
+        mobileVerificationService.verifyOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Mobile number verified successfully.")
+                        .build()
+        );
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerificationOtp(
+            @Valid @RequestBody ResendVerificationRequest request) {
+
+        emailVerificationService.resendVerificationOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Verification OTP sent successfully.")
+                        .build()
+        );
+    }
+    @PostMapping("/resend-mobile-otp")
+    public ResponseEntity<ApiResponse<Void>> resendMobileOtp(
+            @Valid @RequestBody ResendMobileOtpRequest request) {
+
+        mobileVerificationService.resendOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Mobile OTP sent successfully.")
+                        .build()
+        );
     }
 
 }

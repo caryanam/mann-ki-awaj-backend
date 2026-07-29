@@ -30,6 +30,7 @@ import com.mka.repository.UserRepository;
 
 import com.mka.service.AuthService;
 
+import com.mka.service.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -63,6 +64,8 @@ public class AuthServiceImpl implements AuthService {
 
     private  final AdminRepository adminRepository;
 
+    //for Email verification
+    private final EmailVerificationService emailVerificationService;
 
 
 
@@ -112,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
 
 
-        return LoginResponseDTO.builder()
+      /*  return LoginResponseDTO.builder()
 
                 .id(user.getId())
 
@@ -126,12 +129,29 @@ public class AuthServiceImpl implements AuthService {
 
                 .build();
 
+       */
+
+        User savedUser = userRepository.save(user);
+
+// Send verification OTP
+        emailVerificationService.sendVerificationOtp(savedUser);
+
+        return LoginResponseDTO.builder()
+                .id(savedUser.getId())
+                .fullName(savedUser.getFullName())
+                .email(savedUser.getEmail())
+                .mobileNumber(savedUser.getMobileNumber())
+                .role(savedUser.getRole())
+                .build();
+
     }
 
 
 
     @Override
     public AuthResponse login(LoginRequest request) {
+
+
 
 
         Optional<Admin> adminOptional = adminRepository.findByEmail(request.getEmail());
@@ -175,11 +195,24 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
+       /* if (!user.getActive()) {
+            throw new RuntimeException("Your account is inactive.");
+        }
+
+        String token = jwtService.generateToken(user.getEmail(),user.getRole().name()); */
+
         if (!user.getActive()) {
             throw new RuntimeException("Your account is inactive.");
         }
 
-        String token = jwtService.generateToken(user.getEmail(),user.getRole().name());
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new RuntimeException("Please verify your email before logging in.");
+        }
+
+        String token = jwtService.generateToken(
+                user.getEmail(),
+                user.getRole().name()
+        );
 
         return AuthResponse.builder()
                 .id(user.getId())

@@ -61,6 +61,10 @@ public class User {
     @Column(length = 255)
     private String profileImage;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean mobileVerified = false;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();

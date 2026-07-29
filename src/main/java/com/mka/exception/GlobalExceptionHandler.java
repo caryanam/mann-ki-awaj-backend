@@ -27,11 +27,19 @@ public class GlobalExceptionHandler {
                         validationErrors.put(error.getField(), error.getDefaultMessage()));
 
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", false);
+       response.put("success", false);
         response.put("status", HttpStatus.BAD_REQUEST.value());
         response.put("message", "Validation Failed");
-        response.put("timestamp", LocalDateTime.now());
+        response.put("timestamp", LocalDateTime.now() == null ? "Internal server error" : ex.getMessage());
         response.put("errors", validationErrors);
+
+
+       /* response.put("success",false);
+        response.put("status",500);
+        response.put("message",ex.getMessage());
+        response.put("timestamp",LocalDateTime.now());
+
+        */
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }

@@ -41,7 +41,11 @@ public class SecurityConfig {
                         // Authentication APIs
                         .requestMatchers(
                                 "/api/auth/register",
-                                "/api/auth/login"
+                                "/api/auth/login",
+                                "/api/auth/verify-email",
+                                "/api/auth/resend-verification",
+                                "/api/auth/verify-mobile",
+                                "/api/auth/resend-mobile-otp"
                         ).permitAll()
 
                         // Public profile view (anyone can see someone's public profile)

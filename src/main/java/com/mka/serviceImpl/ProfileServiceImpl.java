@@ -1,4 +1,4 @@
-package com.mka.service.impl;
+package com.mka.serviceImpl;
 
 import com.mka.dto.request.CreateProfileRequest;
 import com.mka.dto.request.UpdateProfileRequest;
