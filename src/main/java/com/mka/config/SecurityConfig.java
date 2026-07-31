@@ -48,11 +48,19 @@ public class SecurityConfig {
                                 "/api/auth/resend-mobile-otp"
                         ).permitAll()
 
-                        // Public profile view (anyone can see someone's public profile)
+                        // Public feed, posts, comments, profiles & reasons view
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
-                                "/api/profile/*"
+                                "/api/posts",
+                                "/api/posts/*",
+                                "/api/posts/*/comments",
+                                "/api/profile/*",
+                                "/api/users/*",
+                                "/api/report-reasons"
                         ).permitAll()
+
+                        // Admin APIs
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
 
                         // Swagger APIs

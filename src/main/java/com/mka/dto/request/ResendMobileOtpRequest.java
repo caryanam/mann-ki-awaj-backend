@@ -1,19 +1,17 @@
 package com.mka.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.*;
 
-@Getter
-@Service
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ResendMobileOtpRequest {
 
     @NotBlank(message = "Mobile number is required")
     private String mobileNumber;
 
-
+    public String getMobileNumber() { return mobileNumber; }
+    public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; }
 }

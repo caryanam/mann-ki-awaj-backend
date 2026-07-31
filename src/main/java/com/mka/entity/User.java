@@ -3,75 +3,58 @@ package com.mka.entity;
 import com.mka.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_email", columnList = "email"),
+        @Index(name = "idx_users_mobile_number", columnList = "mobile_number")
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class User {
+@SuperBuilder
+public class User extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, length = 100)
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false, unique = true, length = 10)
+    @Column(name = "mobile_number", nullable = false, unique = true, length = 15)
     private String mobileNumber;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private Role role;
+    @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.USER;
 
-    @Column(nullable = false)
+    @Column(name = "active", nullable = false)
     @Builder.Default
     private Boolean active = true;
 
-    @Column(nullable = false)
+    @Column(name = "deleted", nullable = false)
     @Builder.Default
     private Boolean deleted = false;
 
-    @Column(nullable = false)
+    @Column(name = "email_verified", nullable = false)
     @Builder.Default
     private Boolean emailVerified = false;
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updatedAt;
-
-    @Column(unique = true, length = 30)
-    private String username;
-
-    @Column(length = 150)
-    private String bio;
-
-    @Column(length = 255)
-    private String profileImage;
-
-    @Column(nullable = false)
+    @Column(name = "mobile_verified", nullable = false)
     @Builder.Default
     private Boolean mobileVerified = false;
 
-    @PrePersist
-    public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    public String getUsername() {
+        return email;
     }
 
-    @PreUpdate
-    public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    public String getFormattedUserId() {
+        return getId() != null ? String.format("USR_%02d", getId()) : null;
     }
 }

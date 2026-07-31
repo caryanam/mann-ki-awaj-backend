@@ -1,0 +1,14 @@
+package com.mka.enums;
+
+public enum ReportReason {
+    HATE_SPEECH,
+    RELIGIOUS_HATE,
+    CASTE_DISCRIMINATION,
+    GENDER_HARASSMENT,
+    ABUSIVE_LANGUAGE,
+    VIOLENCE,
+    SPAM,
+    FAKE_INFORMATION,
+    SEXUAL_CONTENT,
+    OTHER
+}

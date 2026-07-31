@@ -5,22 +5,25 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class CreateProfileRequest {
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 30, message = "Username must be between 3 and 30 characters")
+
+    @NotBlank(message = "Username handle is required")
+    @Size(min = 3, max = 30, message = "Username handle must be between 3 and 30 characters")
     @Pattern(
             regexp = "^[a-zA-Z0-9._]+$",
-            message = "Username can contain only letters, numbers, dot(.) and underscore(_)"
+            message = "Username handle can contain only letters, numbers, dot(.) and underscore(_)"
     )
     private String username;
 
-    @Size(max = 200, message = "Bio cannot exceed 200 characters")
+    @Size(max = 250, message = "Bio cannot exceed 250 characters")
     private String bio;
 
     private String avatar;
+
+    @Builder.Default
+    private String preferredLanguage = "EN";
 }

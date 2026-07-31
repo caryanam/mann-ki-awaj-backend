@@ -1,0 +1,211 @@
+package com.mka.service.impl;
+
+import com.mka.dto.request.CreatePostRequest;
+import com.mka.dto.request.UpdatePostRequest;
+import com.mka.dto.response.PostResponse;
+import com.mka.entity.Post;
+import com.mka.entity.Profile;
+import com.mka.entity.User;
+import com.mka.enums.PostStatus;
+import com.mka.enums.PostTopic;
+import com.mka.enums.PostType;
+import com.mka.enums.ReactionType;
+import com.mka.exception.ResourceNotFoundException;
+import com.mka.repository.PostLikeRepository;
+import com.mka.repository.PostReactionRepository;
+import com.mka.repository.PostRepository;
+import com.mka.repository.ProfileRepository;
+import com.mka.repository.SavedPostRepository;
+import com.mka.repository.UserRepository;
+import com.mka.service.AiService;
+import com.mka.service.PostService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class PostServiceImpl implements PostService {
+
+    private final PostRepository postRepository;
+    private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
+    private final PostLikeRepository postLikeRepository;
+    private final PostReactionRepository postReactionRepository;
+    private final SavedPostRepository savedPostRepository;
+    private final AiService aiService;
+
+    @Override
+    @Transactional
+    public PostResponse createPost(String email, CreatePostRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        String avatar = profile != null && profile.getAvatar() != null ? profile.getAvatar() : "avatar_default";
+        String preferredLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
+        String handle = profile != null && profile.getUsername() != null ? profile.getUsername() : (user.getEmail() != null ? user.getEmail().split("@")[0] : "user_" + user.getId());
+
+        aiService.moderateContent(request.getContent());
+
+        Post post = Post.builder()
+                .user(user)
+                .username(handle)
+                .title(request.getTitle())
+                .summary(request.getSummary())
+                .caption(request.getCaption())
+                .description(request.getDescription())
+                .authorAvatar(avatar)
+                .originalContent(request.getContent())
+                .originalLanguage(request.getOriginalLanguage() != null ? request.getOriginalLanguage() : preferredLang)
+                .topic(request.getTopic() != null ? request.getTopic() : PostTopic.GENERAL)
+                .type(request.getType() != null ? request.getType() : PostType.TEXT)
+                .imageUrl(request.getImageUrl())
+                .likeCount(0L)
+                .commentCount(0L)
+                .status(PostStatus.ACTIVE)
+                .build();
+
+        Post savedPost = postRepository.save(post);
+
+        return mapPostToResponse(savedPost, user, preferredLang);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getFeed(String email, PostTopic topic, Pageable pageable) {
+        User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
+        Profile profile = user != null ? profileRepository.findByUser(user).orElse(null) : null;
+        String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
+
+        Page<Post> posts;
+        if (topic != null) {
+            posts = postRepository.findByStatusAndTopic(PostStatus.ACTIVE, topic, pageable);
+        } else {
+            posts = postRepository.findByStatus(PostStatus.ACTIVE, pageable);
+        }
+
+        return posts.map(p -> mapPostToResponse(p, user, userLang));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostResponse getPostById(String email, Long id) {
+        User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
+        Profile profile = user != null ? profileRepository.findByUser(user).orElse(null) : null;
+        String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
+
+        Post post = postRepository.findByIdAndStatus(id, PostStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + id));
+
+        return mapPostToResponse(post, user, userLang);
+    }
+
+    @Override
+    @Transactional
+    public PostResponse updatePost(String email, Long id, UpdatePostRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        Post post = postRepository.findByIdAndStatus(id, PostStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + id));
+
+        if (!post.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("User not authorized to update this post");
+        }
+
+        if (request.getContent() != null && !request.getContent().isBlank()) {
+            aiService.moderateContent(request.getContent());
+            post.setOriginalContent(request.getContent());
+        }
+
+        if (request.getTitle() != null) post.setTitle(request.getTitle());
+        if (request.getSummary() != null) post.setSummary(request.getSummary());
+        if (request.getCaption() != null) post.setCaption(request.getCaption());
+        if (request.getDescription() != null) post.setDescription(request.getDescription());
+        if (request.getTopic() != null) post.setTopic(request.getTopic());
+        if (request.getType() != null) post.setType(request.getType());
+        if (request.getImageUrl() != null) post.setImageUrl(request.getImageUrl());
+
+        Post updated = postRepository.save(post);
+
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
+
+        return mapPostToResponse(updated, user, userLang);
+    }
+
+    @Override
+    @Transactional
+    public void deletePost(String email, Long id) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        Post post = postRepository.findByIdAndStatus(id, PostStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + id));
+
+        if (!post.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("User not authorized to delete this post");
+        }
+
+        post.setStatus(PostStatus.DELETED);
+        postRepository.save(post);
+    }
+
+    private PostResponse mapPostToResponse(Post post, User currentUser, String targetLanguage) {
+        String translated = post.getOriginalContent();
+        if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
+            try {
+                translated = aiService.translateText(post.getOriginalContent(), post.getOriginalLanguage(), targetLanguage);
+            } catch (Exception ignored) {}
+        }
+
+        Map<ReactionType, Long> reactionCounts = new EnumMap<>(ReactionType.class);
+        for (ReactionType type : ReactionType.values()) {
+            long count = postReactionRepository.countByPostIdAndReactionType(post.getId(), type);
+            if (count > 0) {
+                reactionCounts.put(type, count);
+            }
+        }
+
+        boolean isLiked = currentUser != null && postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUser.getId());
+        boolean isSaved = currentUser != null && savedPostRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
+
+        Profile authorProfile = post.getUser() != null ? profileRepository.findByUser(post.getUser()).orElse(null) : null;
+        String handle = authorProfile != null && authorProfile.getUsername() != null
+                ? authorProfile.getUsername()
+                : (post.getUsername() != null && !post.getUsername().contains(" ") ? post.getUsername() : (post.getUser() != null && post.getUser().getEmail() != null ? post.getUser().getEmail().split("@")[0] : "anonymous"));
+
+        return PostResponse.builder()
+                .id(post.getId())
+                .postId(post.getFormattedPostId())
+                .authorId(post.getUser() != null ? post.getUser().getId() : null)
+                .username(handle)
+                .title(post.getTitle())
+                .summary(post.getSummary())
+                .caption(post.getCaption())
+                .description(post.getDescription())
+                .authorAvatar(post.getAuthorAvatar())
+                .originalContent(post.getOriginalContent())
+                .translatedContent(translated)
+                .originalLanguage(post.getOriginalLanguage())
+                .displayLanguage(targetLanguage != null ? targetLanguage : post.getOriginalLanguage())
+                .topic(post.getTopic())
+                .type(post.getType())
+                .imageUrl(post.getImageUrl())
+                .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0L)
+                .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0L)
+                .reactionCounts(reactionCounts)
+                .isLikedByCurrentUser(isLiked)
+                .isSavedByCurrentUser(isSaved)
+                .createdAt(post.getCreatedAt())
+                .build();
+    }
+}

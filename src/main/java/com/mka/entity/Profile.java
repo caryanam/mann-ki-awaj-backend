@@ -1,36 +1,38 @@
 package com.mka.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(
-        name = "profiles",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = "username")
-        }
-)
+@Table(name = "profiles", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_profiles_username", columnNames = "username"),
+        @UniqueConstraint(name = "uk_profiles_user_id", columnNames = "user_id")
+}, indexes = {
+        @Index(name = "idx_profiles_username", columnList = "username")
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Profile {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+public class Profile extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(name = "username", nullable = false, unique = true, length = 30)
     private String username;
 
-    @Column(nullable = false, length = 100)
-    private String avatar;
+    @Column(name = "avatar", nullable = false, length = 100)
+    @Builder.Default
+    private String avatar = "#6F405F";
 
-    @Column(length = 250)
+    @Column(name = "preferred_language", nullable = false, length = 10)
+    @Builder.Default
+    private String preferredLanguage = "EN";
+
+    @Column(name = "bio", length = 250)
     private String bio;
 }

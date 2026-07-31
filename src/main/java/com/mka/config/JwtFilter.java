@@ -186,7 +186,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        if (path.startsWith("/swagger-ui")
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())
+                || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/webjars")
                 || path.equals("/swagger-ui.html")
