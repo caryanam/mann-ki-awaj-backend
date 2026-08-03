@@ -17,4 +17,8 @@ public interface ChatService {
     ChatMessageResponse sendMessage(String email, SendMessageRequest request);
 
     Page<ChatMessageResponse> getRoomMessages(String email, Long roomId, Pageable pageable);
+
+    ChatRoomResponse acceptRoomRequest(String email, Long roomId);
+
+    ChatRoomResponse rejectRoomRequest(String email, Long roomId);
 }

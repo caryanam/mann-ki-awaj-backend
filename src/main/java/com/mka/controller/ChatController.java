@@ -106,4 +106,36 @@ public class ChatController {
                         .build()
         );
     }
+
+    @PutMapping("/rooms/{roomId}/accept")
+    @Operation(summary = "Accept a pending chat room request")
+    public ResponseEntity<ApiResponse<ChatRoomResponse>> acceptChatRequest(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable Long roomId) {
+        String identifier = resolveUsername(principalObj);
+        ChatRoomResponse room = chatService.acceptRoomRequest(identifier, roomId);
+        return ResponseEntity.ok(
+                ApiResponse.<ChatRoomResponse>builder()
+                        .success(true)
+                        .message("Chat request accepted successfully")
+                        .data(room)
+                        .build()
+        );
+    }
+
+    @PutMapping("/rooms/{roomId}/reject")
+    @Operation(summary = "Reject/Decline a pending chat room request")
+    public ResponseEntity<ApiResponse<ChatRoomResponse>> rejectChatRequest(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable Long roomId) {
+        String identifier = resolveUsername(principalObj);
+        ChatRoomResponse room = chatService.rejectRoomRequest(identifier, roomId);
+        return ResponseEntity.ok(
+                ApiResponse.<ChatRoomResponse>builder()
+                        .success(true)
+                        .message("Chat request rejected successfully")
+                        .data(room)
+                        .build()
+        );
+    }
 }

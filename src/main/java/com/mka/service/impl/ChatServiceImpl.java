@@ -1,5 +1,6 @@
 package com.mka.service.impl;
 
+import com.corundumstudio.socketio.SocketIOServer;
 import com.mka.dto.request.SendMessageRequest;
 import com.mka.dto.response.ChatMessageResponse;
 import com.mka.dto.response.ChatRoomResponse;
@@ -34,6 +35,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
     private final AiService aiService;
+    private final SocketIOServer socketIOServer;
 
     private User findUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank()) return null;
@@ -57,6 +59,8 @@ public class ChatServiceImpl implements ChatService {
                         ChatRoom.builder()
                                 .participant1(currentUser)
                                 .participant2(recipientUser)
+                                .requestStatus("PENDING")
+                                .requestSenderId(currentUser.getId())
                                 .build()
                 ));
 
@@ -101,8 +105,16 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
+        ChatMessageResponse response = mapMessageToResponse(savedMessage);
 
-        return mapMessageToResponse(savedMessage);
+        // Broadcast the message via Socket.IO
+        try {
+            socketIOServer.getRoomOperations("room_" + room.getId()).sendEvent("receive_message", response);
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast message: " + e.getMessage());
+        }
+
+        return response;
     }
 
     @Override
@@ -121,6 +133,60 @@ public class ChatServiceImpl implements ChatService {
 
         return chatMessageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable)
                 .map(this::mapMessageToResponse);
+    }
+
+    @Override
+    @Transactional
+    public ChatRoomResponse acceptRoomRequest(String identifier, Long roomId) {
+        User currentUser = findUserByIdentifier(identifier);
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("User not found: " + identifier);
+        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        if (room.getRequestSenderId() != null && room.getRequestSenderId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Sender cannot accept their own request.");
+        }
+
+        room.setRequestStatus("ACCEPTED");
+        ChatRoom saved = chatRoomRepository.save(room);
+        ChatRoomResponse resp = mapRoomToResponse(saved, currentUser);
+
+        // Broadcast status change via Socket.IO
+        try {
+            socketIOServer.getRoomOperations("room_" + roomId).sendEvent("room_status_change", resp);
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast room_status_change: " + e.getMessage());
+        }
+        return resp;
+    }
+
+    @Override
+    @Transactional
+    public ChatRoomResponse rejectRoomRequest(String identifier, Long roomId) {
+        User currentUser = findUserByIdentifier(identifier);
+        if (currentUser == null) {
+            throw new ResourceNotFoundException("User not found: " + identifier);
+        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        if (room.getRequestSenderId() != null && room.getRequestSenderId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Sender cannot reject their own request.");
+        }
+
+        room.setRequestStatus("REJECTED");
+        ChatRoom saved = chatRoomRepository.save(room);
+        ChatRoomResponse resp = mapRoomToResponse(saved, currentUser);
+
+        // Broadcast status change via Socket.IO
+        try {
+            socketIOServer.getRoomOperations("room_" + roomId).sendEvent("room_status_change", resp);
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast room_status_change: " + e.getMessage());
+        }
+        return resp;
     }
 
     private ChatRoomResponse mapRoomToResponse(ChatRoom room, User currentUser) {
@@ -149,6 +215,8 @@ public class ChatServiceImpl implements ChatService {
                 .otherParticipantId(otherUser.getId())
                 .otherParticipantUsername(otherUsername)
                 .otherParticipantAvatar(otherAvatar)
+                .requestStatus(room.getRequestStatus())
+                .requestSenderId(room.getRequestSenderId())
                 .createdAt(room.getCreatedAt())
                 .updatedAt(room.getUpdatedAt())
                 .build();

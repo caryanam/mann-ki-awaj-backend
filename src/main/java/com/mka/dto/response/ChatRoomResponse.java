@@ -24,6 +24,8 @@ public class ChatRoomResponse {
     private String otherParticipantUsername;
     private String otherParticipantAvatar;
     private ChatMessageResponse lastMessage;
+    private String requestStatus;
+    private Long requestSenderId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

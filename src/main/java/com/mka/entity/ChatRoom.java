@@ -25,6 +25,12 @@ public class ChatRoom {
     @JoinColumn(name = "participant2_id", nullable = false)
     private User participant2;
 
+    @Column(name = "request_status", nullable = false, length = 20)
+    private String requestStatus = "PENDING";
+
+    @Column(name = "request_sender_id")
+    private Long requestSenderId;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -33,10 +39,12 @@ public class ChatRoom {
 
     public ChatRoom() {}
 
-    public ChatRoom(Long id, User participant1, User participant2, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public ChatRoom(Long id, User participant1, User participant2, String requestStatus, Long requestSenderId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.participant1 = participant1;
         this.participant2 = participant2;
+        this.requestStatus = requestStatus != null ? requestStatus : "PENDING";
+        this.requestSenderId = requestSenderId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -67,6 +75,12 @@ public class ChatRoom {
     public User getUser2() { return participant2; }
     public void setUser2(User user2) { this.participant2 = user2; }
 
+    public String getRequestStatus() { return requestStatus; }
+    public void setRequestStatus(String requestStatus) { this.requestStatus = requestStatus; }
+
+    public Long getRequestSenderId() { return requestSenderId; }
+    public void setRequestSenderId(Long requestSenderId) { this.requestSenderId = requestSenderId; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -79,6 +93,8 @@ public class ChatRoom {
         private Long id;
         private User participant1;
         private User participant2;
+        private String requestStatus = "PENDING";
+        private Long requestSenderId;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -87,11 +103,13 @@ public class ChatRoom {
         public ChatRoomBuilder user1(User user1) { this.participant1 = user1; return this; }
         public ChatRoomBuilder participant2(User participant2) { this.participant2 = participant2; return this; }
         public ChatRoomBuilder user2(User user2) { this.participant2 = user2; return this; }
+        public ChatRoomBuilder requestStatus(String requestStatus) { this.requestStatus = requestStatus; return this; }
+        public ChatRoomBuilder requestSenderId(Long requestSenderId) { this.requestSenderId = requestSenderId; return this; }
         public ChatRoomBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public ChatRoomBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public ChatRoom build() {
-            return new ChatRoom(id, participant1, participant2, createdAt, updatedAt);
+            return new ChatRoom(id, participant1, participant2, requestStatus, requestSenderId, createdAt, updatedAt);
         }
     }
 }
