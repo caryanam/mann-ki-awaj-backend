@@ -20,6 +20,8 @@ import com.mka.repository.UserRepository;
 import com.mka.service.AiService;
 import com.mka.service.CommentService;
 import com.mka.service.NotificationService;
+import com.mka.translation.dto.TranslationResponse;
+import com.mka.translation.service.TranslationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +45,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentReactionRepository commentReactionRepository;
     private final AiService aiService;
     private final NotificationService notificationService;
+    private final TranslationService translationService;
 
     @Override
     @Transactional
@@ -200,6 +203,30 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private CommentResponse mapToResponse(Comment comment, User currentUser) {
+        String userLang = "EN";
+        if (currentUser != null) {
+            Profile profile = profileRepository.findByUser(currentUser).orElse(null);
+            if (profile != null && profile.getPreferredLanguage() != null) {
+                userLang = profile.getPreferredLanguage();
+            }
+        }
+
+        String translated = comment.getOriginalContent();
+        if (userLang != null && !userLang.equalsIgnoreCase(comment.getOriginalLanguage())) {
+            try {
+                TranslationResponse resp = translationService.translate(
+                        comment.getOriginalContent(),
+                        comment.getOriginalLanguage(),
+                        userLang
+                );
+                if (resp != null && resp.getTranslatedText() != null) {
+                    translated = resp.getTranslatedText();
+                }
+            } catch (Exception ex) {
+                // Fallback gracefully to original text on translation failure
+            }
+        }
+
         Map<ReactionType, Long> reactionCounts = new EnumMap<>(ReactionType.class);
         for (ReactionType type : ReactionType.values()) {
             long count = commentReactionRepository.countByCommentIdAndReactionType(comment.getId(), type);
@@ -224,9 +251,9 @@ public class CommentServiceImpl implements CommentService {
                 .authorUsername(handle)
                 .authorAvatar(comment.getAuthorAvatar())
                 .originalContent(comment.getOriginalContent())
-                .translatedContent(comment.getOriginalContent())
+                .translatedContent(translated)
                 .originalLanguage(comment.getOriginalLanguage())
-                .displayLanguage(comment.getOriginalLanguage())
+                .displayLanguage(userLang != null ? userLang : comment.getOriginalLanguage())
                 .likeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0L)
                 .reactionCounts(reactionCounts)
                 .isLikedByCurrentUser(isLiked)

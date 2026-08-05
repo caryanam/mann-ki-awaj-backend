@@ -91,6 +91,36 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(com.mka.translation.exception.TranslationRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleTranslationRequestException(com.mka.translation.exception.TranslationRequestException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(com.mka.translation.exception.TranslationServiceUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleTranslationServiceUnavailableException(com.mka.translation.exception.TranslationServiceUnavailableException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(com.mka.translation.exception.TranslationFailedException.class)
+    public ResponseEntity<Map<String, Object>> handleTranslationFailedException(com.mka.translation.exception.TranslationFailedException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.BAD_GATEWAY.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         Map<String, Object> response = new LinkedHashMap<>();

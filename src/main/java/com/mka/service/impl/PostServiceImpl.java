@@ -19,7 +19,11 @@ import com.mka.repository.SavedPostRepository;
 import com.mka.repository.UserRepository;
 import com.mka.service.AiService;
 import com.mka.service.PostService;
+import com.mka.translation.dto.TranslationResponse;
+import com.mka.translation.service.TranslationService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PostServiceImpl implements PostService {
 
+    private static final Logger log = LoggerFactory.getLogger(PostServiceImpl.class);
+
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
@@ -41,6 +47,7 @@ public class PostServiceImpl implements PostService {
     private final PostReactionRepository postReactionRepository;
     private final SavedPostRepository savedPostRepository;
     private final AiService aiService;
+    private final TranslationService translationService;
 
     @Override
     @Transactional
@@ -64,7 +71,7 @@ public class PostServiceImpl implements PostService {
                 .description(request.getDescription())
                 .authorAvatar(avatar)
                 .originalContent(request.getContent())
-                .originalLanguage(request.getOriginalLanguage() != null ? request.getOriginalLanguage() : preferredLang)
+                .originalLanguage(request.getOriginalLanguage() != null && !request.getOriginalLanguage().isBlank() ? request.getOriginalLanguage() : "EN")
                 .topic(request.getTopic() != null ? request.getTopic() : PostTopic.GENERAL)
                 .type(request.getType() != null ? request.getType() : PostType.TEXT)
                 .imageUrl(request.getImageUrl())
@@ -163,8 +170,18 @@ public class PostServiceImpl implements PostService {
         String translated = post.getOriginalContent();
         if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
             try {
-                translated = aiService.translateText(post.getOriginalContent(), post.getOriginalLanguage(), targetLanguage);
-            } catch (Exception ignored) {}
+                TranslationResponse response = translationService.translate(
+                        post.getOriginalContent(),
+                        post.getOriginalLanguage(),
+                        targetLanguage
+                );
+                if (response != null && response.getTranslatedText() != null) {
+                    translated = response.getTranslatedText();
+                }
+            } catch (Exception ex) {
+                log.warn("Post translation failed [Post ID: {}] from [{}] to [{}]: {}. Falling back to original content.",
+                        post.getId(), post.getOriginalLanguage(), targetLanguage, ex.getMessage(), ex);
+            }
         }
 
         Map<ReactionType, Long> reactionCounts = new EnumMap<>(ReactionType.class);
