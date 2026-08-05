@@ -54,6 +54,9 @@ class PostServiceImplTest {
     @Mock
     private AiService aiService;
 
+    @Mock
+    private com.mka.translation.service.TranslationService translationService;
+
     @InjectMocks
     private PostServiceImpl postService;
 
