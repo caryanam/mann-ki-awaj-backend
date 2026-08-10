@@ -1,27 +1,32 @@
 package com.mka.translation.service.impl;
 
-import com.mka.translation.client.IndicTrans2Client;
+import com.mka.enums.translation.SupportedLanguage;
 import com.mka.translation.dto.TranslationRequest;
 import com.mka.translation.dto.TranslationResponse;
 import com.mka.translation.exception.TranslationRequestException;
+import com.mka.translation.provider.OpenAITranslationProvider;
 import com.mka.translation.service.TranslationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Production-ready implementation of TranslationService.
- * Validates request parameters, measures latency, calls IndicTrans2Client,
- * and provides safe fallbacks on microservice failures without crashing the application.
+ * Production-ready implementation of TranslationService using OpenAI exclusively.
+ * Execution flow:
+ * 1. Request validation (throws TranslationRequestException if text/lang blank)
+ * 2. Same source & target language check -> returns original text (engine = "none")
+ * 3. OpenAI Translation Provider -> returns translated text (engine = "OpenAI")
+ * 4. OpenAI Failure -> graceful original text fallback (engine = "fallback")
  */
 @Service
 public class TranslationServiceImpl implements TranslationService {
 
     private static final Logger log = LoggerFactory.getLogger(TranslationServiceImpl.class);
-    private final IndicTrans2Client indicTrans2Client;
 
-    public TranslationServiceImpl(IndicTrans2Client indicTrans2Client) {
-        this.indicTrans2Client = indicTrans2Client;
+    private final OpenAITranslationProvider openAiProvider;
+
+    public TranslationServiceImpl(OpenAITranslationProvider openAiProvider) {
+        this.openAiProvider = openAiProvider;
     }
 
     @Override
@@ -43,6 +48,21 @@ public class TranslationServiceImpl implements TranslationService {
         String srcLang = sourceLanguage.trim();
         String tgtLang = targetLanguage.trim();
 
+        // 1. Same language check: Return original text immediately
+        SupportedLanguage srcEnum = SupportedLanguage.fromCode(srcLang);
+        SupportedLanguage tgtEnum = SupportedLanguage.fromCode(tgtLang);
+        if (srcEnum == tgtEnum || srcLang.equalsIgnoreCase(tgtLang)) {
+            log.info("Source and target language identical [{}]. Returning original text.", srcLang);
+            return TranslationResponse.builder()
+                    .originalText(cleanText)
+                    .translatedText(cleanText)
+                    .sourceLanguage(srcLang)
+                    .targetLanguage(tgtLang)
+                    .engine("none")
+                    .cached(false)
+                    .build();
+        }
+
         TranslationRequest request = TranslationRequest.builder()
                 .text(cleanText)
                 .sourceLanguage(srcLang)
@@ -52,22 +72,27 @@ public class TranslationServiceImpl implements TranslationService {
         long startTime = System.currentTimeMillis();
         log.info("Translation request started: [{}] -> [{}] (Length: {} chars)", srcLang, tgtLang, cleanText.length());
 
-        try {
-            TranslationResponse response = indicTrans2Client.translate(request);
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("Translation completed successfully: [{}] -> [{}] in {}ms (engine: {}, cached: {})",
-                    srcLang, tgtLang, duration, response.getEngine(), response.isCached());
-            return response;
-        } catch (Exception ex) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("Translation service call failed after {}ms: {}. Returning graceful fallback.", duration, ex.getMessage());
-            
-            return TranslationResponse.fallback(cleanText, srcLang, tgtLang);
+        // 2. Execute OpenAI Primary Provider
+        if (openAiProvider.isAvailable()) {
+            try {
+                TranslationResponse response = openAiProvider.translate(request);
+                long duration = System.currentTimeMillis() - startTime;
+                log.info("OpenAI Translation completed successfully: [{}] -> [{}] in {}ms", srcLang, tgtLang, duration);
+                return response;
+            } catch (Exception ex) {
+                long duration = System.currentTimeMillis() - startTime;
+                log.warn("OpenAI Translation provider failed after {}ms: {}. Returning graceful original text fallback.", duration, ex.getMessage());
+            }
+        } else {
+            log.warn("OpenAI Translation provider is not configured or unavailable. Returning graceful original text fallback.");
         }
+
+        // 3. Graceful Fallback: Return original text
+        return TranslationResponse.fallback(cleanText, srcLang, tgtLang);
     }
 
     @Override
     public boolean isTranslationServiceAvailable() {
-        return indicTrans2Client.isTranslationServiceAvailable();
+        return openAiProvider.isAvailable();
     }
 }
