@@ -121,6 +121,46 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
     }
 
+    @ExceptionHandler(com.mka.exception.openai.OpenAiAuthException.class)
+    public ResponseEntity<Map<String, Object>> handleOpenAiAuthException(com.mka.exception.openai.OpenAiAuthException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(com.mka.exception.openai.OpenAiRateLimitException.class)
+    public ResponseEntity<Map<String, Object>> handleOpenAiRateLimitException(com.mka.exception.openai.OpenAiRateLimitException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.TOO_MANY_REQUESTS.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @ExceptionHandler(com.mka.exception.openai.OpenAiTimeoutException.class)
+    public ResponseEntity<Map<String, Object>> handleOpenAiTimeoutException(com.mka.exception.openai.OpenAiTimeoutException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.GATEWAY_TIMEOUT.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.GATEWAY_TIMEOUT);
+    }
+
+    @ExceptionHandler(com.mka.exception.openai.OpenAiApiException.class)
+    public ResponseEntity<Map<String, Object>> handleOpenAiApiException(com.mka.exception.openai.OpenAiApiException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.BAD_GATEWAY.value());
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         Map<String, Object> response = new LinkedHashMap<>();

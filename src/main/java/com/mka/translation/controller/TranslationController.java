@@ -37,7 +37,7 @@ public class TranslationController {
         boolean available = translationService.isTranslationServiceAvailable();
         return ResponseEntity.ok(Map.of(
                 "status", available ? "UP" : "DOWN",
-                "service", "Python IndicTrans2 Translation Microservice"
+                "service", "OpenAI Translation Service"
         ));
     }
 }

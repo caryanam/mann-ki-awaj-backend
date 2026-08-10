@@ -1,8 +1,8 @@
 package com.mka.enums.translation;
 
 /**
- * Enumeration representing supported languages for translation services,
- * mapping standard ISO codes, display names, and IndicTrans2 language identifiers.
+ * Enumeration representing supported languages in the system,
+ * mapping standard ISO codes, display names, and FLORES language identifiers.
  */
 public enum SupportedLanguage {
     EN("English", "en", "eng_Latn"),

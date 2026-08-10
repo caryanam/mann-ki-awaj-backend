@@ -19,7 +19,11 @@ target/
 *.iml
 *.ipr
 
-src/main/resources/application.properties
+
+# Secret & Environment Files
+.env
+.env.*
+!.env.example
 
 ### NetBeans ###
 /nbproject/private/
