@@ -9,19 +9,20 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 public class MannKiAavajApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MannKiAavajApplication.class, args);
+        org.springframework.context.ConfigurableApplicationContext context = SpringApplication.run(MannKiAavajApplication.class, args);
+        String port = context.getEnvironment().getProperty("server.port", "8080");
 
-        System.out.println("""
+        System.out.printf("""
               ====================================================
                 MANN KI AAVAJ BACKEND STARTED SUCCESSFULLY
               ====================================================
 
              Application : Mann Ki Aavaj (Voice of the Heart)
-             Server      : http://localhost:8080
-             Swagger UI  : http://localhost:8080/swagger-ui/index.html
-             OpenAPI Doc : http://localhost:8080/v3/api-docs
+             Server      : http://localhost:%s
+             Swagger UI  : http://localhost:%s/swagger-ui/index.html
+             OpenAPI Doc : http://localhost:%s/v3/api-docs
 
-             ====================================================
-             """);
+              ====================================================
+             %n""", port, port, port);
     }
 }

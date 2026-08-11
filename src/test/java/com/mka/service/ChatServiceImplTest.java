@@ -46,6 +46,12 @@ class ChatServiceImplTest {
     @Mock
     private AiService aiService;
 
+    @Mock
+    private com.corundumstudio.socketio.SocketIOServer socketIOServer;
+
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private ChatServiceImpl chatService;
 
