@@ -14,8 +14,12 @@ public class SocketIOServerRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("Starting Socket.IO Server on port 8085...");
-        server.start();
+        try {
+            System.out.println("Starting Socket.IO Server on port 8085...");
+            server.start();
+        } catch (Exception e) {
+            System.err.println("Failed to start Socket.IO Server (port 8085 may already be in use): " + e.getMessage());
+        }
     }
 
     @PreDestroy
