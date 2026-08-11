@@ -28,10 +28,10 @@ public class ChatController {
     private final ChatService chatService;
 
     private String resolveUsername(Object principalObj) {
-        if (principalObj instanceof UserPrincipal principal) {
-            return principal.getUsername();
-        } else if (principalObj != null) {
-            return principalObj.toString();
+        if (principalObj instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+            return userDetails.getUsername();
+        } else if (principalObj instanceof String s) {
+            return s;
         }
         return "";
     }

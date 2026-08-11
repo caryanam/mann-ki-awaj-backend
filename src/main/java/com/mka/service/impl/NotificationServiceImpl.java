@@ -1,5 +1,6 @@
 package com.mka.service.impl;
 
+import com.corundumstudio.socketio.SocketIOServer;
 import com.mka.dto.response.NotificationResponse;
 import com.mka.entity.Notification;
 import com.mka.entity.User;
@@ -22,6 +23,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
+    private final SocketIOServer socketIOServer;
 
     @Override
     @Transactional
@@ -38,7 +40,17 @@ public class NotificationServiceImpl implements NotificationService {
                 .isRead(false)
                 .build();
 
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        // Real-time broadcast to recipient's personal user room
+        try {
+            NotificationResponse resp = toResponse(saved);
+            if (resp != null) {
+                socketIOServer.getRoomOperations("user_" + recipient.getId()).sendEvent("new_notification", resp);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast real-time notification: " + e.getMessage());
+        }
     }
 
     @Override

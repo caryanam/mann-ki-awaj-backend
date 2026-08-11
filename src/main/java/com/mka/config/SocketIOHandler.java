@@ -29,5 +29,12 @@ public class SocketIOHandler {
             client.leaveRoom("room_" + roomId);
             log.info("Client {} left room: room_{}", client.getSessionId(), roomId);
         });
+
+        server.addEventListener("join_user_room", String.class, (client, userId, ackSender) -> {
+            if (userId != null && !userId.isBlank()) {
+                client.joinRoom("user_" + userId);
+                log.info("Client {} joined personal user room: user_{}", client.getSessionId(), userId);
+            }
+        });
     }
 }

@@ -14,6 +14,8 @@ import com.mka.repository.ChatMessageRepository;
 import com.mka.repository.ChatRoomRepository;
 import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
+import com.mka.enums.NotificationType;
+import com.mka.service.NotificationService;
 import com.mka.service.AiService;
 import com.mka.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class ChatServiceImpl implements ChatService {
     private final ProfileRepository profileRepository;
     private final AiService aiService;
     private final SocketIOServer socketIOServer;
+    private final NotificationService notificationService;
 
     private User findUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank()) return null;
@@ -107,11 +110,30 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage savedMessage = chatMessageRepository.save(message);
         ChatMessageResponse response = mapMessageToResponse(savedMessage);
 
-        // Broadcast the message via Socket.IO
+        // Broadcast the message via Socket.IO to room operations AND personal user rooms
         try {
             socketIOServer.getRoomOperations("room_" + room.getId()).sendEvent("receive_message", response);
+            if (room.getParticipant1() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant1().getId()).sendEvent("receive_message", response);
+            }
+            if (room.getParticipant2() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant2().getId()).sendEvent("receive_message", response);
+            }
         } catch (Exception e) {
             System.err.println("Failed to broadcast message: " + e.getMessage());
+        }
+
+        // Notify recipient about new chat message
+        User recipient = room.getParticipant1().getId().equals(sender.getId()) ? room.getParticipant2() : room.getParticipant1();
+        if (recipient != null && !recipient.getId().equals(sender.getId())) {
+            notificationService.createNotification(
+                    recipient,
+                    sender,
+                    avatar,
+                    NotificationType.CHAT_MESSAGE,
+                    response.getSenderUsername() + " sent you a message",
+                    room.getId()
+            );
         }
 
         return response;
@@ -153,9 +175,15 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom saved = chatRoomRepository.save(room);
         ChatRoomResponse resp = mapRoomToResponse(saved, currentUser);
 
-        // Broadcast status change via Socket.IO
+        // Broadcast status change via Socket.IO to room and user channels
         try {
             socketIOServer.getRoomOperations("room_" + roomId).sendEvent("room_status_change", resp);
+            if (room.getParticipant1() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant1().getId()).sendEvent("room_status_change", resp);
+            }
+            if (room.getParticipant2() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant2().getId()).sendEvent("room_status_change", resp);
+            }
         } catch (Exception e) {
             System.err.println("Failed to broadcast room_status_change: " + e.getMessage());
         }
@@ -180,9 +208,15 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom saved = chatRoomRepository.save(room);
         ChatRoomResponse resp = mapRoomToResponse(saved, currentUser);
 
-        // Broadcast status change via Socket.IO
+        // Broadcast status change via Socket.IO to room and user channels
         try {
             socketIOServer.getRoomOperations("room_" + roomId).sendEvent("room_status_change", resp);
+            if (room.getParticipant1() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant1().getId()).sendEvent("room_status_change", resp);
+            }
+            if (room.getParticipant2() != null) {
+                socketIOServer.getRoomOperations("user_" + room.getParticipant2().getId()).sendEvent("room_status_change", resp);
+            }
         } catch (Exception e) {
             System.err.println("Failed to broadcast room_status_change: " + e.getMessage());
         }

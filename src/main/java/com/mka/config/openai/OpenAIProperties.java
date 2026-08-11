@@ -5,13 +5,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
 /**
  * Configuration properties for OpenAI API integration.
- * Reads properties with prefix `openai` from application.properties.
+ * Reads properties with prefix `openai` from application.properties or .env configuration.
  */
 @ConfigurationProperties(prefix = "openai")
 @Getter
@@ -21,7 +20,7 @@ import java.time.Duration;
 public class OpenAIProperties {
 
     /**
-     * OpenAI API Key loaded from environment variable OPENAI_API_KEY.
+     * OpenAI API Key loaded from environment variable OPENAI_API_KEY or .env configuration.
      */
     private String apiKey;
 
