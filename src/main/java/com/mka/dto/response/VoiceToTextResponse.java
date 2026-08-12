@@ -13,4 +13,5 @@ public class VoiceToTextResponse {
 
     private String text;
     private String detectedLanguage;
+    private String requestedLanguage;
 }

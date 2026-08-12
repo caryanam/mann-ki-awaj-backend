@@ -3,12 +3,20 @@ package com.mka.enums;
 public enum LanguageCode {
     EN,
     HI,
-    MR,
-    PA,
-    TA,
-    TE,
-    GU,
     BN,
+    MR,
+    TE,
+    TA,
+    GU,
+    UR,
     KN,
-    ML
+    OR,
+    ML,
+    PA,
+    AS,
+    SAT,
+    KS,
+    MNI,
+    DOI,
+    BHO
 }

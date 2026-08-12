@@ -32,4 +32,15 @@ public interface OpenAIClient {
      * @return Translated text response string.
      */
     String translateText(String text, String sourceLanguageName, String targetLanguageName, String model);
+
+    /**
+     * Transcribes spoken audio bytes into text using OpenAI Audio Transcriptions API.
+     *
+     * @param audioBytes Raw audio bytes.
+     * @param fileName File name e.g. voice_recording.webm.
+     * @param model Model name e.g. whisper-1.
+     * @param language Optional target speech language code e.g. HI, MR, EN.
+     * @return VoiceToTextResponse containing transcribed text and detected language.
+     */
+    com.mka.dto.response.VoiceToTextResponse transcribeAudio(byte[] audioBytes, String fileName, String model, String language);
 }

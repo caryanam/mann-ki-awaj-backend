@@ -43,10 +43,20 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ProfileResponse getMyProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
         Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
+                .orElseGet(() -> profileRepository.save(
+                        Profile.builder()
+                                .user(user)
+                                .username("user_" + user.getId())
+                                .avatar("avatar_default")
+                                .preferredLanguage("EN")
+                                .build()
+                ));
         return profileMapper.toResponse(profile);
     }
 
@@ -61,8 +71,18 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public ProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
         Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
+                .orElseGet(() -> profileRepository.save(
+                        Profile.builder()
+                                .user(user)
+                                .username("user_" + user.getId())
+                                .avatar("avatar_default")
+                                .preferredLanguage("EN")
+                                .build()
+                ));
 
         if (request.getUsername() != null && !request.getUsername().isBlank()) {
             String newUsername = request.getUsername().trim();
@@ -91,8 +111,18 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public ProfileResponse updateAvatar(Long userId, String avatar) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
         Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
+                .orElseGet(() -> profileRepository.save(
+                        Profile.builder()
+                                .user(user)
+                                .username("user_" + user.getId())
+                                .avatar("avatar_default")
+                                .preferredLanguage("EN")
+                                .build()
+                ));
         profile.setAvatar(avatar);
         return profileMapper.toResponse(profileRepository.save(profile));
     }
@@ -100,8 +130,18 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public ProfileResponse updateLanguage(Long userId, String language) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
         Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
+                .orElseGet(() -> profileRepository.save(
+                        Profile.builder()
+                                .user(user)
+                                .username("user_" + user.getId())
+                                .avatar("avatar_default")
+                                .preferredLanguage(language)
+                                .build()
+                ));
         profile.setPreferredLanguage(language);
         return profileMapper.toResponse(profileRepository.save(profile));
     }

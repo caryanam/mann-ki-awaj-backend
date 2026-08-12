@@ -1,6 +1,6 @@
 package com.mka.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.mka.client.openai.OpenAIClient;
 import com.mka.dto.response.VoiceToTextResponse;
 import com.mka.exception.BadRequestException;
 import com.mka.service.AiService;
@@ -8,38 +8,26 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-public class AiServiceImpl implements AiService {
+public class
+AiServiceImpl implements AiService {
 
     private static final Logger log = LoggerFactory.getLogger(AiServiceImpl.class);
 
-    private final RestTemplate restTemplate;
+    private final OpenAIClient openAIClient;
 
     @Value("${ai.moderation.enabled:true}")
     private boolean moderationEnabled;
 
     @Value("${ai.translation.enabled:true}")
     private boolean translationEnabled;
-
-    @Value("${openai.api.key:}")
-    private String openAiApiKey;
-
-    @Value("${openai.model:gpt-4o-mini}")
-    private String openAiModel;
-
-    @Value("${openai.api.url:https://api.openai.com/v1}")
-    private String openAiApiUrl;
 
     private static final List<String> PROHIBITED_KEYWORDS = Arrays.asList(
             "fuck", "shit", "bitch", "bastard", "asshole",
@@ -77,13 +65,25 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public VoiceToTextResponse processVoiceToText(MultipartFile audioFile) {
+        return processVoiceToText(audioFile, null);
+    }
+
+    @Override
+    public VoiceToTextResponse processVoiceToText(MultipartFile audioFile, String language) {
         if (audioFile == null || audioFile.isEmpty()) {
             throw new BadRequestException("Audio file is required for speech-to-text processing.");
         }
 
-        return VoiceToTextResponse.builder()
-                .text("Transcribed audio content")
-                .detectedLanguage("EN")
-                .build();
+        try {
+            byte[] audioBytes = audioFile.getBytes();
+            String fileName = audioFile.getOriginalFilename();
+            if (fileName == null || fileName.trim().isEmpty()) {
+                fileName = "voice_recording.webm";
+            }
+            return openAIClient.transcribeAudio(audioBytes, fileName, null, language);
+        } catch (IOException e) {
+            log.error("Failed to read audio file bytes for STT processing: {}", e.getMessage());
+            throw new BadRequestException("Could not read uploaded audio file.");
+        }
     }
 }

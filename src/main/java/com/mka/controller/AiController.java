@@ -21,9 +21,10 @@ public class AiController {
     @PostMapping("/voice-to-text")
     @Operation(summary = "Convert voice audio file to typed text (Audio is never saved)")
     public ResponseEntity<ApiResponse<VoiceToTextResponse>> voiceToText(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "language", required = false) String language) {
 
-        VoiceToTextResponse result = aiService.processVoiceToText(file);
+        VoiceToTextResponse result = aiService.processVoiceToText(file, language);
         return ResponseEntity.ok(
                 ApiResponse.<VoiceToTextResponse>builder()
                         .success(true)

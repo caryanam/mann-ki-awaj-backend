@@ -10,4 +10,6 @@ public interface AiService {
     String translateText(String text, String sourceLanguage, String targetLanguage);
 
     VoiceToTextResponse processVoiceToText(MultipartFile audioFile);
+
+    VoiceToTextResponse processVoiceToText(MultipartFile audioFile, String language);
 }

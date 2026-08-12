@@ -7,17 +7,22 @@ package com.mka.enums.translation;
 public enum SupportedLanguage {
     EN("English", "en", "eng_Latn"),
     HI("Hindi", "hi", "hin_Deva"),
-    MR("Marathi", "mr", "mar_Deva"),
-    PA("Punjabi", "pa", "pan_Guru"),
-    TA("Tamil", "ta", "tam_Taml"),
-    TE("Telugu", "te", "tel_Telu"),
-    GU("Gujarati", "gu", "guj_Gujr"),
     BN("Bengali", "bn", "ben_Beng"),
+    MR("Marathi", "mr", "mar_Deva"),
+    TE("Telugu", "te", "tel_Telu"),
+    TA("Tamil", "ta", "tam_Taml"),
+    GU("Gujarati", "gu", "guj_Gujr"),
+    UR("Urdu", "ur", "urd_Arab"),
     KN("Kannada", "kn", "kan_Knda"),
-    ML("Malayalam", "ml", "mal_Mlym"),
     OR("Odia", "or", "ory_Orya"),
+    ML("Malayalam", "ml", "mal_Mlym"),
+    PA("Punjabi", "pa", "pan_Guru"),
     AS("Assamese", "as", "asm_Beng"),
-    UR("Urdu", "ur", "urd_Arab");
+    SAT("Santali", "sat", "sat_Olck"),
+    KS("Kashmiri", "ks", "kas_Deva"),
+    MNI("Manipuri", "mni", "mni_Beng"),
+    DOI("Dogri", "doi", "doi_Deva"),
+    BHO("Bhojpuri", "bho", "bho_Deva");
 
     private final String displayName;
     private final String code;
