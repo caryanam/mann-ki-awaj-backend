@@ -298,6 +298,8 @@ public class OpenAIClientImpl implements OpenAIClient {
             body.add("prompt", "नमस्कार, डोगरी मन की आवाज में आपका स्वागत है।");
         } else if (cleanRequested.equals("telugu") || cleanRequested.equals("te") || cleanRequested.equals("tel_telu")) {
             body.add("prompt", "నమస్కారం, మన్ కీ ఆవాజ్");
+        } else if (cleanRequested.equals("gujarati") || cleanRequested.equals("gu") || cleanRequested.equals("guj_gujr")) {
+            body.add("prompt", "નમસ્તે, મન કી આવાજમાં તમારું સ્વાગત છે।");
         } else if (whisperLangCode == null || whisperLangCode.equals("hi") || whisperLangCode.equals("mr") || whisperLangCode.equals("ur")) {
             body.add("prompt", "नमस्कार, मन की आवाज में आपका स्वागत है।");
         }
@@ -400,16 +402,16 @@ public class OpenAIClientImpl implements OpenAIClient {
             case "kannada", "kn", "kan_knda" -> "kn";
             case "urdu", "ur", "urd_arab" -> "ur";
             case "english", "en", "eng_latn" -> "en";
-            case "gujarati", "gu", "guj_gujr" -> "gu";
             case "malayalam", "ml", "mal_mlym" -> "ml";
             case "odia", "or", "ory_orya" -> "or";
             case "assamese", "as", "asm_beng" -> "as";
-            // Omit explicit language parameter for BN, PA, TE, SAT, KS, MNI, DOI, BHO
+            // Omit explicit language parameter for BN, PA, TE, GU, SAT, KS, MNI, DOI, BHO
             // to allow Whisper auto-detection & script prompt hinting without triggering HTTP 400
             case "bengali", "bn", "ben_beng", "punjabi", "pa", "pan_guru",
-                 "telugu", "te", "tel_telu", "bhojpuri", "bho", "bho_deva",
-                 "santali", "sat", "sat_olck", "kashmiri", "ks", "kas_deva",
-                 "manipuri", "mni", "mni_beng", "dogri", "doi", "doi_deva" -> null;
+                 "telugu", "te", "tel_telu", "gujarati", "gu", "guj_gujr",
+                 "bhojpuri", "bho", "bho_deva", "santali", "sat", "sat_olck",
+                 "kashmiri", "ks", "kas_deva", "manipuri", "mni", "mni_beng",
+                 "dogri", "doi", "doi_deva" -> null;
             default -> null;
         };
     }

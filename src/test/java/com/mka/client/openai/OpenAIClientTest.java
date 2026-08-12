@@ -220,6 +220,28 @@ class OpenAIClientTest {
         assertEquals("నమస్కారం, మన్ కీ ఆవాజ్", body.getFirst("prompt"));
     }
 
+    @Test
+    void testTranscribeAudio_Gujarati_OmitsLanguageParamAndUsesGujaratiPrompt() {
+        setupMockRestClientResponse("નમસ્તે, તમે કેમ છો?", "gu");
+
+        byte[] audioBytes = new byte[]{1, 2, 3, 4};
+        VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "GU");
+
+        assertNotNull(response);
+        assertEquals("નમસ્તે, તમે કેમ છો?", response.getText());
+        assertEquals("GU", response.getDetectedLanguage());
+        assertEquals("GU", response.getRequestedLanguage());
+
+        ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
+        verify(requestBodySpec).body(bodyCaptor.capture());
+        MultiValueMap<String, Object> body = bodyCaptor.getValue();
+
+        // Verify explicit language parameter is OMITTED for Gujarati
+        assertNull(body.getFirst("language"), "Language parameter MUST be omitted for GU to prevent 400 Unsupported Language error");
+        // Verify Gujarati native-script prompt hint is attached
+        assertEquals("નમસ્તે, મન કી આવાજમાં તમારું સ્વાગત છે।", body.getFirst("prompt"));
+    }
+
     @SuppressWarnings("unchecked")
     private void setupMockRestClientResponse(String transcribedText, String detectedLang) {
         when(restClient.post()).thenReturn(requestBodyUriSpec);
