@@ -43,18 +43,65 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
-            throw new ResourceAlreadyExistsException("Email is already registered");
+        String email = request.getEmail().trim().toLowerCase();
+        String mobile = request.getMobileNumber().trim();
+
+        // 1. Check if user already exists by email
+        Optional<User> existingUserOpt = userRepository.findByEmail(email);
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            if (Boolean.TRUE.equals(existingUser.getEmailVerified())) {
+                throw new ResourceAlreadyExistsException("Email is already registered");
+            }
+
+            // Unverified user - check mobile number conflicts with other verified users
+            Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
+            if (userWithMobileOpt.isPresent() && !userWithMobileOpt.get().getEmail().equals(email)) {
+                if (Boolean.TRUE.equals(userWithMobileOpt.get().getEmailVerified())) {
+                    throw new ResourceAlreadyExistsException("Mobile number is already registered by another verified user");
+                }
+            }
+
+            // Update registration details and password
+            existingUser.setFullName(request.getFullName().trim());
+            existingUser.setMobileNumber(mobile);
+            existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
+            existingUser.setActive(true);
+            existingUser.setDeleted(false);
+
+            User savedUser = userRepository.save(existingUser);
+
+            // Dispatch verification OTP via email
+            try {
+                emailVerificationService.sendVerificationOtp(savedUser);
+            } catch (Exception e) {
+                // Log non-blocking email delivery failure during initial registration
+            }
+
+            return AuthResponse.builder()
+                    .userId(savedUser.getId())
+                    .email(savedUser.getEmail())
+                    .fullName(savedUser.getFullName())
+                    .role(savedUser.getRole())
+                    .emailVerified(savedUser.getEmailVerified())
+                    .mobileVerified(savedUser.getMobileVerified())
+                    .build();
         }
 
-        if (userRepository.existsByMobileNumber(request.getMobileNumber().trim())) {
-            throw new ResourceAlreadyExistsException("Mobile number is already registered");
+        // 2. Check if mobile number is used by someone else
+        Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
+        if (userWithMobileOpt.isPresent()) {
+            User userWithMobile = userWithMobileOpt.get();
+            if (Boolean.TRUE.equals(userWithMobile.getEmailVerified())) {
+                throw new ResourceAlreadyExistsException("Mobile number is already registered");
+            }
+            throw new ResourceAlreadyExistsException("Mobile number is already registered by an unverified account. Please use the original email to verify.");
         }
 
         User user = User.builder()
                 .fullName(request.getFullName().trim())
-                .email(request.getEmail().trim().toLowerCase())
-                .mobileNumber(request.getMobileNumber().trim())
+                .email(email)
+                .mobileNumber(mobile)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
                 .active(true)
@@ -118,6 +165,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
         authenticateCredentials(email, request.getPassword());
+
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new UnauthorizedException("Please verify your email OTP before logging in.");
+        }
 
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         Optional<Profile> profileOpt = profileRepository.findByUser(user);

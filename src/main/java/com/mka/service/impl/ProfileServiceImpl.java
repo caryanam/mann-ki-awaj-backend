@@ -29,8 +29,25 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        if (profileRepository.findByUser(user).isPresent()) {
-            throw new ResourceAlreadyExistsException("Profile already exists for this user");
+        // If profile already exists, update details instead of throwing 409 Conflict
+        java.util.Optional<Profile> existingProfileOpt = profileRepository.findByUser(user);
+        if (existingProfileOpt.isPresent()) {
+            Profile profile = existingProfileOpt.get();
+            String requestedUsername = request.getUsername().trim();
+
+            if (profileRepository.existsByUsername(requestedUsername) && 
+                !profile.getUsername().equalsIgnoreCase(requestedUsername)) {
+                throw new ResourceAlreadyExistsException("Username handle @" + request.getUsername() + " is already taken");
+            }
+
+            profile.setUsername(requestedUsername);
+            profile.setBio(request.getBio() != null ? request.getBio().trim() : null);
+            if (request.getAvatar() != null && !request.getAvatar().isBlank()) {
+                profile.setAvatar(request.getAvatar().trim());
+            }
+
+            Profile savedProfile = profileRepository.save(profile);
+            return profileMapper.toResponse(savedProfile);
         }
 
         if (profileRepository.existsByUsername(request.getUsername().trim())) {

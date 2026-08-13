@@ -35,7 +35,8 @@ public class EmailServiceImpl implements EmailService {
             message.setText(body);
             mailSender.send(message);
         } catch (Exception e) {
-            // Log email send failure safely
+            System.err.println("SMTP Error sending mail to " + toEmail + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

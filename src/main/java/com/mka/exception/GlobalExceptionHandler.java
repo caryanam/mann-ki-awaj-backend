@@ -125,10 +125,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleOpenAiAuthException(com.mka.exception.openai.OpenAiAuthException ex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        response.put("status", HttpStatus.BAD_GATEWAY.value());
         response.put("message", ex.getMessage());
         response.put("timestamp", LocalDateTime.now());
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
     }
 
     @ExceptionHandler(com.mka.exception.openai.OpenAiRateLimitException.class)
