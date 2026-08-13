@@ -56,7 +56,7 @@ public class CommentServiceImpl implements CommentService {
         Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
-        aiService.moderateContent(request.getContent());
+        aiService.moderateContent(user, request.getContent(), "COMMENT");
 
         Profile userProfile = profileRepository.findByUser(user).orElse(null);
         String avatar = userProfile != null && userProfile.getAvatar() != null
@@ -103,7 +103,7 @@ public class CommentServiceImpl implements CommentService {
         Comment parentComment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-        aiService.moderateContent(request.getContent());
+        aiService.moderateContent(user, request.getContent(), "COMMENT");
 
         Profile userProfile = profileRepository.findByUser(user).orElse(null);
         String avatar = userProfile != null && userProfile.getAvatar() != null
@@ -172,7 +172,7 @@ public class CommentServiceImpl implements CommentService {
             throw new IllegalArgumentException("User not authorized to update this comment");
         }
 
-        aiService.moderateContent(request.getContent());
+        aiService.moderateContent(user, request.getContent(), "COMMENT");
 
         comment.setOriginalContent(request.getContent());
         Comment updated = commentRepository.save(comment);

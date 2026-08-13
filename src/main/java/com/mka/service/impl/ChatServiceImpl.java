@@ -1,6 +1,7 @@
 package com.mka.service.impl;
 
 import com.corundumstudio.socketio.SocketIOServer;
+import com.mka.config.PresenceManager;
 import com.mka.dto.request.SendMessageRequest;
 import com.mka.dto.response.ChatMessageResponse;
 import com.mka.dto.response.ChatRoomResponse;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
     private final AiService aiService;
     private final SocketIOServer socketIOServer;
     private final NotificationService notificationService;
+    private final PresenceManager presenceManager;
 
     private User findUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank()) return null;
@@ -93,7 +96,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Chat room not found with id: " + request.getRoomId()));
 
-        aiService.moderateContent(request.getContent());
+        aiService.moderateContent(sender, request.getContent(), "MESSAGE");
 
         Profile senderProfile = profileRepository.findByUser(sender).orElse(null);
         String avatar = senderProfile != null && senderProfile.getAvatar() != null ? senderProfile.getAvatar() : "avatar_default";
@@ -140,7 +143,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<ChatMessageResponse> getRoomMessages(String identifier, Long roomId, Pageable pageable) {
         User currentUser = findUserByIdentifier(identifier);
         if (currentUser == null) return Page.empty(pageable);
@@ -153,8 +156,18 @@ public class ChatServiceImpl implements ChatService {
             return Page.empty(pageable);
         }
 
-        return chatMessageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable)
-                .map(this::mapMessageToResponse);
+        Page<ChatMessage> messagesPage = chatMessageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable);
+
+        List<ChatMessage> unread = messagesPage.getContent().stream()
+                .filter(m -> !m.getSender().getId().equals(currentUser.getId()) && (m.getIsRead() == null || !m.getIsRead()))
+                .peek(m -> m.setIsRead(true))
+                .collect(Collectors.toList());
+
+        if (!unread.isEmpty()) {
+            chatMessageRepository.saveAll(unread);
+        }
+
+        return messagesPage.map(this::mapMessageToResponse);
     }
 
     @Override
@@ -238,6 +251,12 @@ public class ChatServiceImpl implements ChatService {
         String p1Username = p1Profile != null && p1Profile.getUsername() != null ? p1Profile.getUsername() : (room.getParticipant1().getUsername() != null ? room.getParticipant1().getUsername() : "user_" + room.getParticipant1().getId());
         String p2Username = p2Profile != null && p2Profile.getUsername() != null ? p2Profile.getUsername() : (room.getParticipant2().getUsername() != null ? room.getParticipant2().getUsername() : "user_" + room.getParticipant2().getId());
 
+        ChatMessage lastMsg = chatMessageRepository.findTopByRoomIdOrderByCreatedAtDesc(room.getId()).orElse(null);
+        long unreadCount = currentUser != null ? chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.getId(), currentUser.getId()) : 0L;
+
+        boolean isOtherOnline = presenceManager.isUserOnline(otherUser.getId());
+        LocalDateTime otherLastSeen = presenceManager.getLastSeen(otherUser.getId());
+
         return ChatRoomResponse.builder()
                 .id(room.getId())
                 .participant1Id(room.getParticipant1().getId())
@@ -249,6 +268,11 @@ public class ChatServiceImpl implements ChatService {
                 .otherParticipantId(otherUser.getId())
                 .otherParticipantUsername(otherUsername)
                 .otherParticipantAvatar(otherAvatar)
+                .otherParticipantIsOnline(isOtherOnline)
+                .otherParticipantLastSeen(otherLastSeen)
+                .lastMessage(lastMsg != null ? mapMessageToResponse(lastMsg) : null)
+                .unreadCount(unreadCount)
+                .hasUnread(unreadCount > 0)
                 .requestStatus(room.getRequestStatus())
                 .requestSenderId(room.getRequestSenderId())
                 .createdAt(room.getCreatedAt())

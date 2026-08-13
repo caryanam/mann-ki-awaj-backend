@@ -45,6 +45,9 @@ public class ProfileServiceImpl implements ProfileService {
             if (request.getAvatar() != null && !request.getAvatar().isBlank()) {
                 profile.setAvatar(request.getAvatar().trim());
             }
+            if (request.getPreferredLanguage() != null && !request.getPreferredLanguage().isBlank()) {
+                profile.setPreferredLanguage(request.getPreferredLanguage().trim());
+            }
 
             Profile savedProfile = profileRepository.save(profile);
             return profileMapper.toResponse(savedProfile);

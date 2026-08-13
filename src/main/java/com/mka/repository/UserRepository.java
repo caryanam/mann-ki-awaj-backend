@@ -22,4 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByActiveTrue();
 
     org.springframework.data.domain.Page<User> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrMobileNumberContainingIgnoreCase(String fullName, String email, String mobileNumber, org.springframework.data.domain.Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    int deleteByDeletedTrueAndUpdatedAtBefore(java.time.LocalDateTime dateTime);
 }

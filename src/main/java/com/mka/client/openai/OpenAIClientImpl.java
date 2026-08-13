@@ -469,4 +469,56 @@ public class OpenAIClientImpl implements OpenAIClient {
             default -> "EN";
         };
     }
+
+    @Override
+    public String moderateImage(byte[] imageBytes, String mimeType) {
+        if (!isConfigured() || imageBytes == null || imageBytes.length == 0) {
+            return "SAFE";
+        }
+
+        try {
+            String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+            String dataUrl = "data:" + (mimeType != null && !mimeType.isBlank() ? mimeType : "image/jpeg") + ";base64," + base64Image;
+
+            String systemPrompt = "You are an automated content safety moderator. Analyze the image. " +
+                    "If the image contains explicit adult nudity, sexual content, extreme violence, blood, gore, hate symbols, or illegal activity, " +
+                    "reply ONLY with 'UNSAFE: <brief category/reason>'. If the image is safe for a public community, reply ONLY with 'SAFE'.";
+
+            java.util.Map<String, Object> textPart = java.util.Map.of("type", "text", "text", systemPrompt);
+            java.util.Map<String, Object> imagePart = java.util.Map.of("type", "image_url", "image_url", java.util.Map.of("url", dataUrl));
+            java.util.Map<String, Object> userMessage = java.util.Map.of("role", "user", "content", java.util.List.of(textPart, imagePart));
+
+            java.util.Map<String, Object> requestBody = java.util.Map.of(
+                    "model", properties.getTranslationModel() != null ? properties.getTranslationModel() : "gpt-4o-mini",
+                    "messages", java.util.List.of(userMessage),
+                    "max_tokens", 60
+            );
+
+            log.info("Invoking OpenAI Vision API for image moderation ({} bytes)...", imageBytes.length);
+
+            java.util.Map responseMap = restClient.post()
+                    .uri("/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(java.util.Map.class);
+
+            if (responseMap != null && responseMap.containsKey("choices")) {
+                java.util.List choices = (java.util.List) responseMap.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    java.util.Map choice = (java.util.Map) choices.get(0);
+                    java.util.Map message = (java.util.Map) choice.get("message");
+                    if (message != null && message.containsKey("content")) {
+                        String result = (String) message.get("content");
+                        if (result != null) return result.trim();
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("OpenAI image moderation check failed: {}. Falling back to SAFE.", ex.getMessage());
+        }
+
+        return "SAFE";
+    }
 }
+

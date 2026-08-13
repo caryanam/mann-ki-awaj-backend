@@ -32,6 +32,10 @@ public class Notification {
 
     private Long targetId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id")
+    private User sender;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -77,6 +81,9 @@ public class Notification {
     public Long getTargetId() { return targetId; }
     public void setTargetId(Long targetId) { this.targetId = targetId; }
 
+    public User getSender() { return sender; }
+    public void setSender(User sender) { this.sender = sender; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -85,6 +92,7 @@ public class Notification {
     public static class NotificationBuilder {
         private Long id;
         private User user;
+        private User sender;
         private NotificationType type;
         private String message;
         private Boolean isRead = false;
@@ -95,7 +103,7 @@ public class Notification {
         public NotificationBuilder id(Long id) { this.id = id; return this; }
         public NotificationBuilder user(User user) { this.user = user; return this; }
         public NotificationBuilder recipient(User recipient) { this.user = recipient; return this; }
-        public NotificationBuilder sender(User sender) { return this; }
+        public NotificationBuilder sender(User sender) { this.sender = sender; return this; }
         public NotificationBuilder type(NotificationType type) { this.type = type; return this; }
         public NotificationBuilder message(String message) { this.message = message; return this; }
         public NotificationBuilder isRead(Boolean isRead) { this.isRead = isRead; return this; }
@@ -104,7 +112,9 @@ public class Notification {
         public NotificationBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Notification build() {
-            return new Notification(id, user, type, message, isRead, senderAvatar, targetId, createdAt);
+            Notification n = new Notification(id, user, type, message, isRead, senderAvatar, targetId, createdAt);
+            n.setSender(sender);
+            return n;
         }
     }
 }

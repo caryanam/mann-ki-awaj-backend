@@ -24,9 +24,13 @@ public class TranslationController {
 
     @PostMapping("/translate")
     public ResponseEntity<TranslationResponse> translate(@Valid @RequestBody TranslationRequest request) {
+        String srcLang = request.getSourceLanguage();
+        if (srcLang == null || srcLang.trim().isEmpty() || "null".equalsIgnoreCase(srcLang.trim()) || "undefined".equalsIgnoreCase(srcLang.trim())) {
+            srcLang = "auto";
+        }
         TranslationResponse response = translationService.translate(
                 request.getText(),
-                request.getSourceLanguage(),
+                srcLang,
                 request.getTargetLanguage()
         );
         return ResponseEntity.ok(response);

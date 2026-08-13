@@ -108,7 +108,7 @@ class ChatServiceImplTest {
 
         when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(senderUser));
         when(chatRoomRepository.findById(100L)).thenReturn(Optional.of(chatRoom));
-        doNothing().when(aiService).moderateContent("Hello there!");
+        doNothing().when(aiService).moderateContent(any(), any(), any());
         when(profileRepository.findByUser(senderUser)).thenReturn(Optional.of(
                 Profile.builder().user(senderUser).avatar("avatar_1").preferredLanguage("EN").build()
         ));

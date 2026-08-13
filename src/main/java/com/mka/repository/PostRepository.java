@@ -26,4 +26,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     long countByStatus(PostStatus status);
 
     long countByCreatedAtAfter(java.time.LocalDateTime dateTime);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    int deleteByStatusAndUpdatedAtBefore(PostStatus status, java.time.LocalDateTime dateTime);
 }

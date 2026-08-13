@@ -62,4 +62,8 @@ public interface AdminService {
     void approveQueueItem(Long id);
 
     void rejectQueueItem(Long id);
+
+    Page<com.mka.dto.response.BlockedContentResponse> getBlockedContent(String contentType, Pageable pageable);
+
+    void sendWarningForBlockedContent(Long id, SendWarningRequest request);
 }

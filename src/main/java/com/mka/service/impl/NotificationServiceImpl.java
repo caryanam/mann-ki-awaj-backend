@@ -118,18 +118,14 @@ public class NotificationServiceImpl implements NotificationService {
         if (notification == null) return null;
 
         String senderUsername = "System";
-        try {
-            String msg = notification.getMessage();
-            if (msg != null && msg.startsWith("@")) {
-                int firstSpace = msg.indexOf(' ');
-                if (firstSpace > 0) {
-                    senderUsername = msg.substring(0, firstSpace);
-                } else {
-                    senderUsername = msg;
-                }
+        if (notification.getSender() != null) {
+            com.mka.entity.Profile p = profileRepository.findByUser(notification.getSender()).orElse(null);
+            if (p != null && p.getUsername() != null && !p.getUsername().isBlank()) {
+                String u = p.getUsername().trim();
+                senderUsername = u.startsWith("@") ? u : "@" + u;
+            } else if (notification.getSender().getEmail() != null) {
+                senderUsername = "@" + notification.getSender().getEmail().split("@")[0];
             }
-        } catch (Exception e) {
-            senderUsername = "System";
         }
 
         return NotificationResponse.builder()

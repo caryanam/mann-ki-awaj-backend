@@ -105,7 +105,7 @@ class PostServiceImplTest {
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(profileRepository.findByUser(testUser)).thenReturn(Optional.of(testProfile));
-        doNothing().when(aiService).moderateContent("Hello World");
+        doNothing().when(aiService).moderateContent(any(), any(), any());
         when(postRepository.save(any(Post.class))).thenReturn(testPost);
 
         PostResponse response = postService.createPost("test@example.com", request);
@@ -113,7 +113,7 @@ class PostServiceImplTest {
         assertNotNull(response);
         assertEquals(10L, response.getId());
         assertEquals("Hello World", response.getOriginalContent());
-        verify(aiService).moderateContent("Hello World");
+        verify(aiService).moderateContent(any(), any(), any());
         verify(postRepository).save(any(Post.class));
     }
 

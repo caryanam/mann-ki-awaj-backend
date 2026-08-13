@@ -28,6 +28,7 @@ public class AdminServiceImpl implements AdminService {
     private final ProfileRepository profileRepository;
     private final ContentReviewQueueRepository reviewQueueRepository;
     private final NotificationService notificationService;
+    private final BlockedContentRepository blockedContentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -392,5 +393,50 @@ public class AdminServiceImpl implements AdminService {
                 .status(item.getStatus())
                 .createdAt(item.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BlockedContentResponse> getBlockedContent(String contentType, Pageable pageable) {
+        Page<BlockedContent> list;
+        if (contentType != null && !contentType.isBlank() && !contentType.equalsIgnoreCase("ALL")) {
+            list = blockedContentRepository.findByContentType(contentType.trim().toUpperCase(), pageable);
+        } else {
+            list = blockedContentRepository.findAll(pageable);
+        }
+
+        return list.map(item -> BlockedContentResponse.builder()
+                .id(item.getId())
+                .userId(item.getUser() != null ? item.getUser().getId() : null)
+                .contentType(item.getContentType())
+                .authorUsername(item.getAuthorUsername())
+                .authorEmail(item.getAuthorEmail())
+                .originalContent(item.getOriginalContent())
+                .flaggedReason(item.getFlaggedReason())
+                .status(item.getStatus())
+                .blockedAt(item.getBlockedAt())
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void sendWarningForBlockedContent(Long id, SendWarningRequest request) {
+        BlockedContent blocked = blockedContentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Blocked content log not found with id: " + id));
+
+        User user = blocked.getUser();
+        if (user != null) {
+            notificationService.createNotification(
+                    user,
+                    null,
+                    "system_avatar",
+                    NotificationType.WARNING,
+                    "WARNING (" + request.getWarningLevel() + "): " + request.getMessage(),
+                    null
+            );
+        }
+
+        blocked.setStatus("WARNING_ISSUED");
+        blockedContentRepository.save(blocked);
     }
 }

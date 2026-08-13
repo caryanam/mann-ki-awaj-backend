@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/api/posts/*/comments",
                                 "/api/profile/*",
                                 "/api/users/*",
-                                "/api/report-reasons"
+                                "/api/report-reasons",
+                                "/uploads/**"
                         ).permitAll()
 
                         // Admin APIs

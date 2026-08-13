@@ -35,4 +35,7 @@ public class Profile extends BaseEntity {
 
     @Column(name = "bio", length = 250)
     private String bio;
+
+    @Column(name = "last_seen")
+    private java.time.LocalDateTime lastSeen;
 }

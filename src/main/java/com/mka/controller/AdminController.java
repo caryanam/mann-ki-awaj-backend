@@ -361,4 +361,36 @@ public class AdminController {
                         .build()
         );
     }
+
+    @GetMapping("/blocked-content")
+    @Operation(summary = "Get list of all AI moderated/blocked content (Admin only)")
+    public ResponseEntity<ApiResponse<Page<BlockedContentResponse>>> getBlockedContent(
+            @RequestParam(required = false) String contentType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<BlockedContentResponse> content = adminService.getBlockedContent(contentType, PageRequest.of(page, size, Sort.by("id").descending()));
+        return ResponseEntity.ok(
+                ApiResponse.<Page<BlockedContentResponse>>builder()
+                        .success(true)
+                        .message("AI blocked content list retrieved")
+                        .data(content)
+                        .build()
+        );
+    }
+
+    @PutMapping("/moderation/ai-blocked/{id}/warn")
+    @Operation(summary = "Issue warning for specific AI blocked content (Admin only)")
+    public ResponseEntity<ApiResponse<Void>> issueWarningForAiBlocked(
+            @PathVariable Long id,
+            @Valid @RequestBody SendWarningRequest request) {
+
+        adminService.sendWarningForBlockedContent(id, request);
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Warning issued and content status updated")
+                        .build()
+        );
+    }
 }

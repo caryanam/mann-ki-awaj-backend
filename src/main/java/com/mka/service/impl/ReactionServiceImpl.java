@@ -41,7 +41,7 @@ public class ReactionServiceImpl implements ReactionService {
         Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
-        ReactionType reactionType = request.getReactionType() != null ? request.getReactionType() : ReactionType.LIKE;
+        ReactionType reactionType = request.getReactionType() != null ? request.getReactionType() : ReactionType.RELATE;
 
         Optional<PostReaction> existingReaction = postReactionRepository.findByPostIdAndUserId(postId, user.getId());
         if (existingReaction.isPresent()) {
@@ -80,7 +80,7 @@ public class ReactionServiceImpl implements ReactionService {
         Comment comment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-        ReactionType reactionType = request.getReactionType() != null ? request.getReactionType() : ReactionType.LIKE;
+        ReactionType reactionType = request.getReactionType() != null ? request.getReactionType() : ReactionType.RELATE;
 
         Optional<CommentReaction> existingReaction = commentReactionRepository.findByCommentIdAndUserId(commentId, user.getId());
         if (existingReaction.isPresent()) {

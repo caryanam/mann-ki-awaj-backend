@@ -20,7 +20,6 @@ public class TranslationRequest {
     @NotBlank(message = "Text cannot be blank")
     private String text;
 
-    @NotBlank(message = "Source language cannot be blank")
     private String sourceLanguage;
 
     @NotBlank(message = "Target language cannot be blank")

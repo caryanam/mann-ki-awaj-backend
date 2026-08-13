@@ -22,6 +22,7 @@ public class PostResponse {
     private Long authorId;
     private String username;
     private String title;
+    private String translatedTitle;
     private String summary;
     private String caption;
     private String description;
@@ -36,6 +37,7 @@ public class PostResponse {
     private long likeCount;
     private long commentCount;
     private Map<ReactionType, Long> reactionCounts;
+    private ReactionType userReaction;
     private boolean isLikedByCurrentUser;
     private boolean isSavedByCurrentUser;
     private LocalDateTime createdAt;

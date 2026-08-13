@@ -60,7 +60,9 @@ public class PostServiceImpl implements PostService {
         String preferredLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
         String handle = profile != null && profile.getUsername() != null ? profile.getUsername() : (user.getEmail() != null ? user.getEmail().split("@")[0] : "user_" + user.getId());
 
-        aiService.moderateContent(request.getContent());
+        String originalLang = preferredLang != null && !preferredLang.isBlank() ? preferredLang : "EN";
+
+        aiService.moderateContent(user, request.getContent(), "POST");
 
         Post post = Post.builder()
                 .user(user)
@@ -71,7 +73,7 @@ public class PostServiceImpl implements PostService {
                 .description(request.getDescription())
                 .authorAvatar(avatar)
                 .originalContent(request.getContent())
-                .originalLanguage(request.getOriginalLanguage() != null && !request.getOriginalLanguage().isBlank() ? request.getOriginalLanguage() : "EN")
+                .originalLanguage(originalLang)
                 .topic(request.getTopic() != null ? request.getTopic() : PostTopic.GENERAL)
                 .type(request.getType() != null ? request.getType() : PostType.TEXT)
                 .imageUrl(request.getImageUrl())
@@ -129,7 +131,7 @@ public class PostServiceImpl implements PostService {
         }
 
         if (request.getContent() != null && !request.getContent().isBlank()) {
-            aiService.moderateContent(request.getContent());
+            aiService.moderateContent(user, request.getContent(), "POST");
             post.setOriginalContent(request.getContent());
         }
 
@@ -168,6 +170,8 @@ public class PostServiceImpl implements PostService {
 
     private PostResponse mapPostToResponse(Post post, User currentUser, String targetLanguage) {
         String translated = post.getOriginalContent();
+        String translatedTitle = post.getTitle();
+
         if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
             try {
                 TranslationResponse response = translationService.translate(
@@ -179,8 +183,22 @@ public class PostServiceImpl implements PostService {
                     translated = response.getTranslatedText();
                 }
             } catch (Exception ex) {
-                log.warn("Post translation failed [Post ID: {}] from [{}] to [{}]: {}. Falling back to original content.",
-                        post.getId(), post.getOriginalLanguage(), targetLanguage, ex.getMessage(), ex);
+                log.warn("Post content translation failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+            }
+
+            if (post.getTitle() != null && !post.getTitle().isBlank()) {
+                try {
+                    TranslationResponse titleResp = translationService.translate(
+                            post.getTitle(),
+                            post.getOriginalLanguage(),
+                            targetLanguage
+                    );
+                    if (titleResp != null && titleResp.getTranslatedText() != null) {
+                        translatedTitle = titleResp.getTranslatedText();
+                    }
+                } catch (Exception ex) {
+                    log.warn("Post title translation failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+                }
             }
         }
 
@@ -191,6 +209,11 @@ public class PostServiceImpl implements PostService {
                 reactionCounts.put(type, count);
             }
         }
+
+        ReactionType userReaction = currentUser != null
+                ? postReactionRepository.findByPostIdAndUserId(post.getId(), currentUser.getId())
+                .map(com.mka.entity.PostReaction::getReactionType).orElse(null)
+                : null;
 
         boolean isLiked = currentUser != null && postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUser.getId());
         boolean isSaved = currentUser != null && savedPostRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
@@ -206,6 +229,7 @@ public class PostServiceImpl implements PostService {
                 .authorId(post.getUser() != null ? post.getUser().getId() : null)
                 .username(handle)
                 .title(post.getTitle())
+                .translatedTitle(translatedTitle)
                 .summary(post.getSummary())
                 .caption(post.getCaption())
                 .description(post.getDescription())
@@ -220,6 +244,7 @@ public class PostServiceImpl implements PostService {
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0L)
                 .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0L)
                 .reactionCounts(reactionCounts)
+                .userReaction(userReaction)
                 .isLikedByCurrentUser(isLiked)
                 .isSavedByCurrentUser(isSaved)
                 .createdAt(post.getCreatedAt())

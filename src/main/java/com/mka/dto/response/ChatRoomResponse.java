@@ -23,7 +23,11 @@ public class ChatRoomResponse {
     private Long otherParticipantId;
     private String otherParticipantUsername;
     private String otherParticipantAvatar;
+    private LocalDateTime otherParticipantLastSeen;
+    private Boolean otherParticipantIsOnline;
     private ChatMessageResponse lastMessage;
+    private Long unreadCount;
+    private Boolean hasUnread;
     private String requestStatus;
     private Long requestSenderId;
     private LocalDateTime createdAt;

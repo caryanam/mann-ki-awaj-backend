@@ -43,4 +43,13 @@ public interface OpenAIClient {
      * @return VoiceToTextResponse containing transcribed text and detected language.
      */
     com.mka.dto.response.VoiceToTextResponse transcribeAudio(byte[] audioBytes, String fileName, String model, String language);
+
+    /**
+     * Moderates an uploaded image file using OpenAI Vision capability.
+     *
+     * @param imageBytes Raw image bytes.
+     * @param mimeType Image MIME type (e.g. image/jpeg, image/png).
+     * @return "SAFE" or "UNSAFE: reason".
+     */
+    String moderateImage(byte[] imageBytes, String mimeType);
 }

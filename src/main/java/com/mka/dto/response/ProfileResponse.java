@@ -19,6 +19,8 @@ public class ProfileResponse {
     private String avatar;
     private String preferredLanguage;
     private String bio;
+    private LocalDateTime lastSeen;
+    private Boolean isOnline;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
