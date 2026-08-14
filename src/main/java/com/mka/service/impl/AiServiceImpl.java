@@ -2,21 +2,27 @@ package com.mka.service.impl;
 
 import com.mka.client.openai.OpenAIClient;
 import com.mka.dto.response.VoiceToTextResponse;
-import com.mka.exception.BadRequestException;
-import com.mka.service.AiService;
-import com.mka.entity.User;
 import com.mka.entity.BlockedContent;
+import com.mka.entity.User;
+import com.mka.exception.BadRequestException;
 import com.mka.repository.BlockedContentRepository;
-import java.time.LocalDateTime;
+import com.mka.service.AiService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +32,7 @@ public class AiServiceImpl implements AiService {
 
     private final OpenAIClient openAIClient;
     private final BlockedContentRepository blockedContentRepository;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${ai.moderation.enabled:true}")
     private boolean moderationEnabled;
@@ -84,24 +91,20 @@ public class AiServiceImpl implements AiService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BadRequestException("Only valid image files (JPEG, PNG, WEBP, GIF) are allowed.");
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            String orig = file.getOriginalFilename();
+            boolean isImgExt = orig != null && orig.matches("(?i).*\\.(jpg|jpeg|png|webp|gif|bmp|svg|tiff|avif|heic)$");
+            if (!isImgExt) {
+                throw new BadRequestException("Only valid image files are allowed.");
+            }
         }
 
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new BadRequestException("Image file size exceeds the 5MB limit.");
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new BadRequestException("Image file size exceeds the 10MB limit.");
         }
 
         try {
             byte[] bytes = file.getBytes();
-            String moderationResult = openAIClient.moderateImage(bytes, contentType);
-
-            if (moderationResult != null && moderationResult.startsWith("UNSAFE")) {
-                log.warn("AI Image Moderation flagged image for user {}: {}", user != null ? user.getEmail() : "anonymous", moderationResult);
-                String reason = moderationResult.replace("UNSAFE:", "").trim();
-                saveBlockedAuditLog(user, "POST_IMAGE", "[Image File: " + file.getOriginalFilename() + "]", reason);
-                throw new BadRequestException("Image content blocked by AI moderation: " + reason);
-            }
 
             java.io.File uploadsDir = new java.io.File("uploads");
             if (!uploadsDir.exists()) {
@@ -121,6 +124,19 @@ public class AiServiceImpl implements AiService {
                 java.nio.file.Files.copy(is, destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
 
+            String moderationResult = openAIClient.moderateImage(bytes, contentType);
+
+            if (moderationResult != null && moderationResult.startsWith("UNSAFE")) {
+                log.warn("AI Image Moderation flagged image for user {}: {}", user != null ? user.getEmail() : "anonymous", moderationResult);
+                String reason = moderationResult.replace("UNSAFE:", "").trim();
+                
+                String mime = contentType != null ? contentType : "image/jpeg";
+                String base64Data = "data:" + mime + ";base64," + java.util.Base64.getEncoder().encodeToString(bytes);
+                
+                saveBlockedAuditLog(user, "POST_IMAGE", base64Data, reason);
+                throw new BadRequestException("Image content blocked by AI moderation: " + reason);
+            }
+
             log.info("Successfully moderated and saved post image: /uploads/{}", fileName);
             return "/uploads/" + fileName;
 
@@ -134,26 +150,30 @@ public class AiServiceImpl implements AiService {
 
     private void saveBlockedAuditLog(User user, String contentType, String content, String flaggedReason) {
         try {
-            String handle = "anonymous";
-            String email = "anonymous@mka.com";
-            if (user != null) {
-                email = user.getEmail();
-                handle = email.split("@")[0];
-            }
+            TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+            transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            transactionTemplate.executeWithoutResult(status -> {
+                String handle = "anonymous";
+                String email = "anonymous@mka.com";
+                if (user != null) {
+                    email = user.getEmail();
+                    handle = email.split("@")[0];
+                }
 
-            BlockedContent blocked = BlockedContent.builder()
-                    .user(user)
-                    .contentType(contentType)
-                    .authorUsername(handle)
-                    .authorEmail(email)
-                    .originalContent(content)
-                    .flaggedReason(flaggedReason)
-                    .status("PENDING")
-                    .blockedAt(LocalDateTime.now())
-                    .build();
+                BlockedContent blocked = BlockedContent.builder()
+                        .user(user)
+                        .contentType(contentType)
+                        .authorUsername(handle)
+                        .authorEmail(email)
+                        .originalContent(content)
+                        .flaggedReason(flaggedReason)
+                        .status("PENDING")
+                        .blockedAt(LocalDateTime.now())
+                        .build();
 
-            blockedContentRepository.saveAndFlush(blocked);
-            log.info("Successfully saved & committed AI blocked content footprint to DB for user: {}", email);
+                blockedContentRepository.saveAndFlush(blocked);
+                log.info("Successfully saved & committed AI blocked content footprint to DB in REQUIRES_NEW transaction for user: {}", email);
+            });
         } catch (Exception e) {
             log.error("Failed to save blocked content log to database: {}", e.getMessage(), e);
         }

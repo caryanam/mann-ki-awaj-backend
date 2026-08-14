@@ -62,7 +62,25 @@ public class PostServiceImpl implements PostService {
 
         String originalLang = preferredLang != null && !preferredLang.isBlank() ? preferredLang : "EN";
 
-        aiService.moderateContent(user, request.getContent(), "POST");
+        StringBuilder fullPostTextBuilder = new StringBuilder();
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            fullPostTextBuilder.append("Title: ").append(request.getTitle()).append("\n");
+        }
+        if (request.getSummary() != null && !request.getSummary().isBlank()) {
+            fullPostTextBuilder.append("Summary: ").append(request.getSummary()).append("\n");
+        }
+        if (request.getContent() != null && !request.getContent().isBlank()) {
+            fullPostTextBuilder.append("Content: ").append(request.getContent()).append("\n");
+        }
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            fullPostTextBuilder.append("Description: ").append(request.getDescription()).append("\n");
+        }
+        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
+            fullPostTextBuilder.append("Image Attached: ").append(request.getImageUrl()).append("\n");
+        }
+        String fullPostText = fullPostTextBuilder.length() > 0 ? fullPostTextBuilder.toString().trim() : (request.getContent() != null ? request.getContent() : "");
+
+        aiService.moderateContent(user, fullPostText, "POST");
 
         Post post = Post.builder()
                 .user(user)

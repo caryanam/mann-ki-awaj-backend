@@ -2,6 +2,7 @@ package com.mka.client.openai;
 
 import com.mka.config.openai.OpenAIProperties;
 import com.mka.dto.openai.OpenAIHealthResponse;
+import com.mka.dto.response.ModerationResult;
 import com.mka.exception.openai.OpenAiAuthException;
 import com.mka.exception.openai.OpenAiRateLimitException;
 import com.mka.exception.openai.OpenAiTimeoutException;
@@ -16,6 +17,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.time.LocalDateTime;
+import java.util.*;
 
 /**
  * Service implementation of OpenAIClient.
@@ -154,6 +156,84 @@ public class OpenAIClientImpl implements OpenAIClient {
     }
 
     @Override
+    public ModerationResult moderateMultimodal(String text, byte[] imageBytes, String imageMimeType) {
+        if (!isConfigured()) {
+            log.error("MODERATION_FAILED: OPENAI_API_KEY is missing or not configured.");
+            return ModerationResult.failClosed("OPENAI_NOT_CONFIGURED", "Content safety verification is temporarily unavailable. Please try again.");
+        }
+
+        List<Map<String, Object>> inputList = new ArrayList<>();
+
+        if (text != null && !text.isBlank()) {
+            inputList.add(Map.of("type", "text", "text", text.trim()));
+        }
+
+        if (imageBytes != null && imageBytes.length > 0) {
+            String mime = (imageMimeType != null && !imageMimeType.isBlank()) ? imageMimeType : "image/jpeg";
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            String dataUrl = "data:" + mime + ";base64," + base64Image;
+            inputList.add(Map.of("type", "image_url", "image_url", Map.of("url", dataUrl)));
+        }
+
+        if (inputList.isEmpty()) {
+            return ModerationResult.approved();
+        }
+
+        Map<String, Object> requestBody = Map.of(
+                "model", "omni-moderation-latest",
+                "input", inputList
+        );
+
+        try {
+            log.info("MODERATION_STARTED: Invoking OpenAI /v1/moderations API using model omni-moderation-latest (Inputs count: {})...", inputList.size());
+
+            Map responseMap = restClient.post()
+                    .uri("/moderations")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(Map.class);
+
+            if (responseMap == null || !responseMap.containsKey("results")) {
+                log.error("MODERATION_FAILED: OpenAI Moderation API returned null or missing results key.");
+                return ModerationResult.failClosed("INVALID_RESPONSE", "Content safety verification is temporarily unavailable. Please try again.");
+            }
+
+            List results = (List) responseMap.get("results");
+            if (results == null || results.isEmpty()) {
+                log.error("MODERATION_FAILED: OpenAI Moderation API returned empty results array.");
+                return ModerationResult.failClosed("EMPTY_RESULTS", "Content safety verification is temporarily unavailable. Please try again.");
+            }
+
+            Map firstResult = (Map) results.get(0);
+            Boolean flagged = (Boolean) firstResult.get("flagged");
+            Map<String, Boolean> categories = (Map<String, Boolean>) firstResult.get("categories");
+            Map<String, Double> categoryScores = (Map<String, Double>) firstResult.get("category_scores");
+
+            if (Boolean.TRUE.equals(flagged)) {
+                List<String> flaggedCategories = new ArrayList<>();
+                if (categories != null) {
+                    categories.forEach((cat, isFlagged) -> {
+                        if (Boolean.TRUE.equals(isFlagged)) {
+                            flaggedCategories.add(cat);
+                        }
+                    });
+                }
+                String reason = flaggedCategories.isEmpty() ? "Prohibited content detected" : String.join(", ", flaggedCategories);
+                log.warn("MODERATION_FLAGGED: Content flagged by omni-moderation-latest. Reason: {}", reason);
+                return ModerationResult.flagged(reason, categories, categoryScores);
+            }
+
+            log.info("MODERATION_SUCCESS: Content approved by omni-moderation-latest.");
+            return ModerationResult.approved();
+
+        } catch (Exception ex) {
+            log.error("MODERATION_FAILED: Exception during OpenAI /v1/moderations call: {}", ex.getMessage(), ex);
+            return ModerationResult.failClosed("API_ERROR", "Content safety verification is temporarily unavailable. Please try again.");
+        }
+    }
+
+    @Override
     public String translateText(String text, String sourceLanguageName, String targetLanguageName, String model) {
         if (!isConfigured()) {
             throw new OpenAiAuthException("OpenAI API key is missing or not configured.");
@@ -178,19 +258,19 @@ public class OpenAIClientImpl implements OpenAIClient {
                 Preserve all emojis, @mentions, usernames, URLs, hashtags, numbers, punctuation, and formatting.
                 """, sourceLanguageName, targetLanguageName);
 
-        java.util.Map<String, Object> systemMessage = java.util.Map.of("role", "system", "content", systemPrompt);
-        java.util.Map<String, Object> userMessage = java.util.Map.of("role", "user", "content", text);
+        Map<String, Object> systemMessage = Map.of("role", "system", "content", systemPrompt);
+        Map<String, Object> userMessage = Map.of("role", "user", "content", text);
 
-        java.util.Map<String, Object> requestBody = java.util.Map.of(
+        Map<String, Object> requestBody = Map.of(
                 "model", targetModel,
-                "messages", java.util.List.of(systemMessage, userMessage),
+                "messages", List.of(systemMessage, userMessage),
                 "temperature", 0.3
         );
 
         try {
             log.info("Invoking OpenAI translation: [{}] -> [{}] using model [{}]", sourceLanguageName, targetLanguageName, targetModel);
 
-            java.util.Map responseMap = restClient.post()
+            Map responseMap = restClient.post()
                     .uri("/chat/completions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
                     .body(requestBody)
@@ -207,19 +287,19 @@ public class OpenAIClientImpl implements OpenAIClient {
                         log.error("OpenAI service error: HTTP {}", resp.getStatusCode().value());
                         throw new com.mka.exception.openai.OpenAiApiException("OpenAI service error: HTTP " + resp.getStatusCode().value());
                     })
-                    .body(java.util.Map.class);
+                    .body(Map.class);
 
             if (responseMap == null || !responseMap.containsKey("choices")) {
                 throw new com.mka.exception.openai.OpenAiApiException("Invalid response structure received from OpenAI API.");
             }
 
-            java.util.List choices = (java.util.List) responseMap.get("choices");
+            List choices = (List) responseMap.get("choices");
             if (choices.isEmpty()) {
                 throw new com.mka.exception.openai.OpenAiApiException("OpenAI API returned empty choices list.");
             }
 
-            java.util.Map choice = (java.util.Map) choices.get(0);
-            java.util.Map message = (java.util.Map) choice.get("message");
+            Map choice = (Map) choices.get(0);
+            Map message = (Map) choice.get("message");
             String translatedContent = (String) message.get("content");
 
             if (translatedContent == null) {
@@ -267,7 +347,6 @@ public class OpenAIClientImpl implements OpenAIClient {
             }
         };
 
-        // Map target language code (e.g. 'MR' -> 'mr', 'HI' -> 'hi', 'EN' -> 'en')
         String whisperLangCode = mapToWhisperLanguageCode(language);
 
         org.springframework.util.MultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
@@ -275,58 +354,20 @@ public class OpenAIClientImpl implements OpenAIClient {
         body.add("model", targetModel);
         body.add("response_format", "verbose_json");
 
-        // OpenAI /audio/transcriptions transcribes audio into text in the specified language (e.g. 'mr', 'hi', 'en')
         if (whisperLangCode != null) {
             body.add("language", whisperLangCode);
         }
 
-        // Native-script prompt hints to guide speech decoding and script consistency
-        String cleanRequested = (language != null) ? language.trim().toLowerCase(java.util.Locale.ROOT) : "";
-        if (cleanRequested.equals("bengali") || cleanRequested.equals("bn") || cleanRequested.equals("ben_beng")) {
-            body.add("prompt", "নমস্কার, মন কি আওয়াজে আপনাকে স্বাগতম।");
-        } else if (cleanRequested.equals("punjabi") || cleanRequested.equals("pa") || cleanRequested.equals("pan_guru")) {
-            body.add("prompt", "ਨਮਸਕਾਰ, ਮਨ ਕੀ ਆਵਾਜ਼ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ।");
-        } else if (cleanRequested.equals("bhojpuri") || cleanRequested.equals("bho") || cleanRequested.equals("bho_deva")) {
-            body.add("prompt", "नमस्कार, राउर मन की आवाज में स्वागत बा।");
-        } else if (cleanRequested.equals("santali") || cleanRequested.equals("sat") || cleanRequested.equals("sat_olck")) {
-            body.add("prompt", "ᱥᱟᱜᱩᱱ ᱫᱟᱨᱟᱢ");
-        } else if (cleanRequested.equals("kashmiri") || cleanRequested.equals("ks") || cleanRequested.equals("kas_deva")) {
-            body.add("prompt", "नमस्कार, कॉशुर मन की आवाज");
-        } else if (cleanRequested.equals("manipuri") || cleanRequested.equals("mni") || cleanRequested.equals("mni_beng")) {
-            body.add("prompt", "তরাম্না ওকচরি");
-        } else if (cleanRequested.equals("dogri") || cleanRequested.equals("doi") || cleanRequested.equals("doi_deva")) {
-            body.add("prompt", "नमस्कार, डोगरी मन की आवाज में आपका स्वागत है।");
-        } else if (cleanRequested.equals("telugu") || cleanRequested.equals("te") || cleanRequested.equals("tel_telu")) {
-            body.add("prompt", "నమస్కారం, మన్ కీ ఆవాజ్");
-        } else if (cleanRequested.equals("gujarati") || cleanRequested.equals("gu") || cleanRequested.equals("guj_gujr")) {
-            body.add("prompt", "નમસ્તે, મન કી આવાજમાં તમારું સ્વાગત છે।");
-        } else if (whisperLangCode == null || whisperLangCode.equals("hi") || whisperLangCode.equals("mr") || whisperLangCode.equals("ur")) {
-            body.add("prompt", "नमस्कार, मन की आवाज में आपका स्वागत है।");
-        }
-
         try {
-            log.info("Invoking OpenAI Audio Transcription API [/audio/transcriptions] for file [{}] ({} bytes) using model [{}] and language [{}]",
-                    safeFileName, audioBytes.length, targetModel, whisperLangCode != null ? whisperLangCode : "AUTO (" + (language != null ? language : "AUTO") + ")");
+            log.info("Invoking OpenAI Audio Transcription API [/audio/transcriptions] for file [{}] ({} bytes)...", safeFileName, audioBytes.length);
 
-            java.util.Map responseMap = restClient.post()
+            Map responseMap = restClient.post()
                     .uri("/audio/transcriptions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
                     .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
-                    .onStatus(status -> status.value() == 401, (req, resp) -> {
-                        log.error("OpenAI audio transcription failed: HTTP 401 Unauthorized.");
-                        throw new OpenAiAuthException("OpenAI API authentication failed (HTTP 401).");
-                    })
-                    .onStatus(status -> status.value() == 429, (req, resp) -> {
-                        log.error("OpenAI audio transcription rate limited: HTTP 429.");
-                        throw new OpenAiRateLimitException("OpenAI API rate limit or quota exceeded (HTTP 429).");
-                    })
-                    .onStatus(HttpStatusCode::is5xxServerError, (req, resp) -> {
-                        log.error("OpenAI service error during audio transcription: HTTP {}", resp.getStatusCode().value());
-                        throw new com.mka.exception.openai.OpenAiApiException("OpenAI service error: HTTP " + resp.getStatusCode().value());
-                    })
-                    .body(java.util.Map.class);
+                    .body(Map.class);
 
             if (responseMap == null || !responseMap.containsKey("text")) {
                 throw new com.mka.exception.openai.OpenAiApiException("Invalid response received from OpenAI Audio Transcription API.");
@@ -337,25 +378,12 @@ public class OpenAIClientImpl implements OpenAIClient {
             String actualDetectedLang = mapWhisperLanguageToIsoCode(rawLanguage, null);
             String normalizedRequestedLang = normalizeRequestedLanguageCode(language);
 
-            log.info("OpenAI Audio Transcription successful. Text length: {}, Detected Language: {}, Requested Language: {}",
-                    transcribedText != null ? transcribedText.length() : 0, actualDetectedLang, normalizedRequestedLang);
-
             return com.mka.dto.response.VoiceToTextResponse.builder()
                     .text(transcribedText != null ? transcribedText.trim() : "")
                     .detectedLanguage(actualDetectedLang != null ? actualDetectedLang : normalizedRequestedLang)
                     .requestedLanguage(normalizedRequestedLang)
                     .build();
 
-        } catch (OpenAiAuthException | OpenAiRateLimitException ex) {
-            throw ex;
-        } catch (ResourceAccessException ex) {
-            log.error("OpenAI API audio transcription request timed out: {}", ex.getMessage());
-            throw new OpenAiTimeoutException("OpenAI audio transcription connection timed out.", ex);
-        } catch (RestClientResponseException ex) {
-            String responseBody = ex.getResponseBodyAsString();
-            log.error("OpenAI API audio transcription returned HTTP error status {} for file [{}] and requested language [{}]. Response body: {}",
-                    ex.getStatusCode().value(), safeFileName, language != null ? language : "AUTO", responseBody);
-            throw new com.mka.exception.openai.OpenAiApiException("OpenAI API responded with HTTP status " + ex.getStatusCode().value() + ": " + responseBody, ex);
         } catch (Exception ex) {
             log.error("Unexpected error during OpenAI audio transcription execution: {}", ex.getMessage());
             throw new com.mka.exception.openai.OpenAiApiException("Error executing audio transcription with OpenAI: " + ex.getMessage(), ex);
@@ -363,219 +391,53 @@ public class OpenAIClientImpl implements OpenAIClient {
     }
 
     private String normalizeRequestedLanguageCode(String inputLang) {
-        if (inputLang == null || inputLang.trim().isEmpty() || inputLang.equalsIgnoreCase("AUTO")) {
-            return "AUTO";
-        }
-        String lang = inputLang.trim().toLowerCase(java.util.Locale.ROOT);
+        if (inputLang == null || inputLang.trim().isEmpty() || inputLang.equalsIgnoreCase("AUTO")) return "AUTO";
+        String lang = inputLang.trim().toLowerCase(Locale.ROOT);
         return switch (lang) {
-            case "bengali", "bn", "ben_beng" -> "BN";
-            case "punjabi", "pa", "pan_guru" -> "PA";
-            case "marathi", "mr", "mar_deva" -> "MR";
-            case "hindi", "hi", "hin_deva" -> "HI";
-            case "tamil", "ta", "tam_taml" -> "TA";
-            case "telugu", "te", "tel_telu" -> "TE";
-            case "gujarati", "gu", "guj_gujr" -> "GU";
-            case "kannada", "kn", "kan_knda" -> "KN";
-            case "malayalam", "ml", "mal_mlym" -> "ML";
-            case "odia", "or", "ory_orya" -> "OR";
-            case "assamese", "as", "asm_beng" -> "AS";
-            case "urdu", "ur", "urd_arab" -> "UR";
-            case "english", "en", "eng_latn" -> "EN";
-            case "santali", "sat", "sat_olck" -> "SAT";
-            case "kashmiri", "ks", "kas_deva" -> "KS";
-            case "manipuri", "mni", "mni_beng" -> "MNI";
-            case "dogri", "doi", "doi_deva" -> "DOI";
-            case "bhojpuri", "bho", "bho_deva" -> "BHO";
-            default -> lang.length() <= 3 ? lang.toUpperCase(java.util.Locale.ROOT) : "AUTO";
+            case "bengali", "bn" -> "BN";
+            case "punjabi", "pa" -> "PA";
+            case "marathi", "mr" -> "MR";
+            case "hindi", "hi" -> "HI";
+            case "english", "en" -> "EN";
+            default -> lang.length() <= 3 ? lang.toUpperCase(Locale.ROOT) : "AUTO";
         };
     }
 
     private String mapToWhisperLanguageCode(String inputLang) {
-        if (inputLang == null || inputLang.trim().isEmpty() || inputLang.equalsIgnoreCase("AUTO")) {
-            return null;
-        }
-        String lang = inputLang.trim().toLowerCase(java.util.Locale.ROOT);
+        if (inputLang == null || inputLang.trim().isEmpty() || inputLang.equalsIgnoreCase("AUTO")) return null;
+        String lang = inputLang.trim().toLowerCase(Locale.ROOT);
         return switch (lang) {
-            case "marathi", "mr", "mar_deva" -> "mr";
-            case "hindi", "hi", "hin_deva" -> "hi";
-            case "tamil", "ta", "tam_taml" -> "ta";
-            case "kannada", "kn", "kan_knda" -> "kn";
-            case "urdu", "ur", "urd_arab" -> "ur";
-            case "english", "en", "eng_latn" -> "en";
-            case "malayalam", "ml", "mal_mlym" -> "ml";
-            case "odia", "or", "ory_orya" -> "or";
-            case "assamese", "as", "asm_beng" -> "as";
-            // Omit explicit language parameter for BN, PA, TE, GU, SAT, KS, MNI, DOI, BHO
-            // to allow Whisper auto-detection & script prompt hinting without triggering HTTP 400
-            case "bengali", "bn", "ben_beng", "punjabi", "pa", "pan_guru",
-                 "telugu", "te", "tel_telu", "gujarati", "gu", "guj_gujr",
-                 "bhojpuri", "bho", "bho_deva", "santali", "sat", "sat_olck",
-                 "kashmiri", "ks", "kas_deva", "manipuri", "mni", "mni_beng",
-                 "dogri", "doi", "doi_deva" -> null;
+            case "marathi", "mr" -> "mr";
+            case "hindi", "hi" -> "hi";
+            case "english", "en" -> "en";
             default -> null;
         };
     }
 
     private String mapWhisperLanguageToIsoCode(String rawLang, String inputRequestedLang) {
-        String cleanRequested = (inputRequestedLang != null) ? inputRequestedLang.trim().toLowerCase(java.util.Locale.ROOT) : "";
-
         if (rawLang != null && !rawLang.trim().isEmpty()) {
-            String lang = rawLang.trim().toLowerCase(java.util.Locale.ROOT);
-            String mapped = switch (lang) {
+            String lang = rawLang.trim().toLowerCase(Locale.ROOT);
+            return switch (lang) {
                 case "marathi", "mr" -> "MR";
                 case "hindi", "hi" -> "HI";
-                case "bengali", "bn" -> "BN";
-                case "tamil", "ta" -> "TA";
-                case "telugu", "te" -> "TE";
-                case "gujarati", "gu" -> "GU";
-                case "punjabi", "pa" -> "PA";
-                case "kannada", "kn" -> "KN";
-                case "malayalam", "ml" -> "ML";
-                case "odia", "or" -> "OR";
-                case "assamese", "as" -> "AS";
-                case "urdu", "ur" -> "UR";
                 case "english", "en" -> "EN";
-                case "santali", "sat" -> "SAT";
-                case "kashmiri", "ks" -> "KS";
-                case "manipuri", "mni" -> "MNI";
-                case "dogri", "doi" -> "DOI";
-                case "bhojpuri", "bho" -> "BHO";
-                default -> lang.length() <= 3 ? lang.toUpperCase(java.util.Locale.ROOT) : null;
+                default -> lang.length() <= 3 ? lang.toUpperCase(Locale.ROOT) : "EN";
             };
-            if (mapped != null) {
-                return mapped;
-            }
         }
-
-        return switch (cleanRequested) {
-            case "bengali", "bn", "ben_beng" -> "BN";
-            case "punjabi", "pa", "pan_guru" -> "PA";
-            case "marathi", "mr", "mar_deva" -> "MR";
-            case "hindi", "hi", "hin_deva" -> "HI";
-            case "tamil", "ta", "tam_taml" -> "TA";
-            case "telugu", "te", "tel_telu" -> "TE";
-            case "gujarati", "gu", "guj_gujr" -> "GU";
-            case "kannada", "kn", "kan_knda" -> "KN";
-            case "malayalam", "ml", "mal_mlym" -> "ML";
-            case "odia", "or", "ory_orya" -> "OR";
-            case "assamese", "as", "asm_beng" -> "AS";
-            case "urdu", "ur", "urd_arab" -> "UR";
-            case "english", "en", "eng_latn" -> "EN";
-            case "santali", "sat", "sat_olck" -> "SAT";
-            case "kashmiri", "ks", "kas_deva" -> "KS";
-            case "manipuri", "mni", "mni_beng" -> "MNI";
-            case "dogri", "doi", "doi_deva" -> "DOI";
-            case "bhojpuri", "bho", "bho_deva" -> "BHO";
-            default -> "EN";
-        };
+        return "EN";
     }
 
     @Override
     public String moderateText(String text) {
-        if (!isConfigured() || text == null || text.trim().isEmpty()) {
-            return "SAFE";
-        }
-
-        try {
-            String systemPrompt = """
-                    You are a strict safety content moderator for an online community.
-                    Evaluate the provided text regardless of its language, script, or transliteration (e.g. English, Hinglish, Minglish, Marathi in Devanagari or Latin script, Hindi, Urdu, Tamil, etc.).
-
-                    Strictly check for:
-                    1. Direct or indirect death threats, threats of murder, physical violence, bodily harm, self-harm, or terrorism (e.g., "marun takel", "tumko maar dunga", "I will kill you", "die", "gore").
-                    2. Communal or religious hate speech, religious slurs, inciting violence against any religion, caste, community, or nationality.
-                    3. Severe profanity, sexual abuse, obscene slurs, harassment, or dehumanizing abuse (e.g., "chutiya", "bhenchod", "madarchod", "gandu", "nigger", "cunt").
-
-                    If the text violates ANY of these rules, reply ONLY with 'UNSAFE: <brief reason>'.
-                    If the text is completely safe for a community platform, reply ONLY with 'SAFE'.
-                    """;
-
-            java.util.Map<String, Object> systemMessage = java.util.Map.of("role", "system", "content", systemPrompt);
-            java.util.Map<String, Object> userMessage = java.util.Map.of("role", "user", "content", text.trim());
-
-            java.util.Map<String, Object> requestBody = java.util.Map.of(
-                    "model", properties.getTranslationModel() != null ? properties.getTranslationModel() : "gpt-4o-mini",
-                    "messages", java.util.List.of(systemMessage, userMessage),
-                    "temperature", 0.0,
-                    "max_tokens", 50
-            );
-
-            log.info("Invoking AI Text Moderation for content: [{}]", text.trim());
-
-            java.util.Map responseMap = restClient.post()
-                    .uri("/chat/completions")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
-                    .body(requestBody)
-                    .retrieve()
-                    .body(java.util.Map.class);
-
-            if (responseMap != null && responseMap.containsKey("choices")) {
-                java.util.List choices = (java.util.List) responseMap.get("choices");
-                if (choices != null && !choices.isEmpty()) {
-                    java.util.Map choice = (java.util.Map) choices.get(0);
-                    java.util.Map message = (java.util.Map) choice.get("message");
-                    if (message != null && message.containsKey("content")) {
-                        String result = (String) message.get("content");
-                        if (result != null) return result.trim();
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            log.warn("OpenAI AI text moderation check failed: {}. Falling back to keyword moderation.", ex.getMessage());
-        }
-
-        return "SAFE";
+        ModerationResult res = moderateMultimodal(text, null, null);
+        if (!res.isSuccessful()) return "SAFE";
+        return res.isFlagged() ? "UNSAFE: " + res.getReason() : "SAFE";
     }
 
     @Override
     public String moderateImage(byte[] imageBytes, String mimeType) {
-        if (!isConfigured() || imageBytes == null || imageBytes.length == 0) {
-            return "SAFE";
-        }
-
-        try {
-            String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
-            String dataUrl = "data:" + (mimeType != null && !mimeType.isBlank() ? mimeType : "image/jpeg") + ";base64," + base64Image;
-
-            String systemPrompt = "You are an automated content safety moderator. Analyze the image. " +
-                    "If the image contains explicit adult nudity, sexual content, extreme violence, blood, gore, hate symbols, or illegal activity, " +
-                    "reply ONLY with 'UNSAFE: <brief category/reason>'. If the image is safe for a public community, reply ONLY with 'SAFE'.";
-
-            java.util.Map<String, Object> textPart = java.util.Map.of("type", "text", "text", systemPrompt);
-            java.util.Map<String, Object> imagePart = java.util.Map.of("type", "image_url", "image_url", java.util.Map.of("url", dataUrl));
-            java.util.Map<String, Object> userMessage = java.util.Map.of("role", "user", "content", java.util.List.of(textPart, imagePart));
-
-            java.util.Map<String, Object> requestBody = java.util.Map.of(
-                    "model", properties.getTranslationModel() != null ? properties.getTranslationModel() : "gpt-4o-mini",
-                    "messages", java.util.List.of(userMessage),
-                    "max_tokens", 60
-            );
-
-            log.info("Invoking OpenAI Vision API for image moderation ({} bytes)...", imageBytes.length);
-
-            java.util.Map responseMap = restClient.post()
-                    .uri("/chat/completions")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
-                    .body(requestBody)
-                    .retrieve()
-                    .body(java.util.Map.class);
-
-            if (responseMap != null && responseMap.containsKey("choices")) {
-                java.util.List choices = (java.util.List) responseMap.get("choices");
-                if (choices != null && !choices.isEmpty()) {
-                    java.util.Map choice = (java.util.Map) choices.get(0);
-                    java.util.Map message = (java.util.Map) choice.get("message");
-                    if (message != null && message.containsKey("content")) {
-                        String result = (String) message.get("content");
-                        if (result != null) return result.trim();
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            log.warn("OpenAI image moderation check failed: {}. Falling back to SAFE.", ex.getMessage());
-        }
-
-        return "SAFE";
+        ModerationResult res = moderateMultimodal(null, imageBytes, mimeType);
+        if (!res.isSuccessful()) return "SAFE";
+        return res.isFlagged() ? "UNSAFE: " + res.getReason() : "SAFE";
     }
 }
-

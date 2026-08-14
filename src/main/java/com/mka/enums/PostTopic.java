@@ -8,5 +8,13 @@ public enum PostTopic {
     THOUGHTS,
     NEWS,
     SPORTS,
-    TECH
+    TECH,
+    LIFE,
+    CAREER,
+    RELATIONSHIPS,
+    EDUCATION,
+    WORKPLACE,
+    PARENTING,
+    BOOKS,
+    CREATIVITY
 }

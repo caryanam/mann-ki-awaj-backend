@@ -48,6 +48,9 @@ public class SecurityConfig {
                                 "/api/auth/resend-mobile-otp"
                         ).permitAll()
 
+                        // Static uploaded files
+                        .requestMatchers("/uploads/**").permitAll()
+
                         // Public feed, posts, comments, profiles & reasons view
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
@@ -56,8 +59,7 @@ public class SecurityConfig {
                                 "/api/posts/*/comments",
                                 "/api/profile/*",
                                 "/api/users/*",
-                                "/api/report-reasons",
-                                "/uploads/**"
+                                "/api/report-reasons"
                         ).permitAll()
 
                         // Admin APIs

@@ -9,4 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BlockedContentRepository extends JpaRepository<BlockedContent, Long> {
     Page<BlockedContent> findByContentType(String contentType, Pageable pageable);
+    long countByUserIdAndStatus(Long userId, String status);
 }

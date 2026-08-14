@@ -4,6 +4,7 @@ import com.mka.dto.request.CreateReportRequest;
 import com.mka.dto.response.ReportResponse;
 import com.mka.entity.Comment;
 import com.mka.entity.Post;
+import com.mka.entity.Profile;
 import com.mka.entity.Report;
 import com.mka.entity.User;
 import com.mka.enums.CommentStatus;
@@ -14,6 +15,7 @@ import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.ResourceNotFoundException;
 import com.mka.repository.CommentRepository;
 import com.mka.repository.PostRepository;
+import com.mka.repository.ProfileRepository;
 import com.mka.repository.ReportRepository;
 import com.mka.repository.UserRepository;
 import com.mka.service.ReportService;
@@ -34,6 +36,7 @@ public class ReportServiceImpl implements ReportService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
 
     @Override
     @Transactional
@@ -102,12 +105,49 @@ public class ReportServiceImpl implements ReportService {
                 .map(this::mapToResponse);
     }
 
+    private String getGeneratedUsername(User user) {
+        if (user == null) return "anonymous";
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        if (profile != null && profile.getUsername() != null && !profile.getUsername().isBlank()) {
+            String u = profile.getUsername().trim();
+            return u.startsWith("@") ? u.substring(1) : u;
+        }
+        if (user.getEmail() != null && user.getEmail().contains("@")) {
+            return user.getEmail().split("@")[0];
+        }
+        return "user_" + user.getId();
+    }
+
     private ReportResponse mapToResponse(Report report) {
+        String reporterHandle = getGeneratedUsername(report.getReporter());
+        String authorHandle = null;
+        String reportedContent = report.getDescription();
+
+        if ("POST".equalsIgnoreCase(report.getContentType()) && report.getContentId() != null) {
+            Post post = postRepository.findById(report.getContentId()).orElse(null);
+            if (post != null) {
+                authorHandle = post.getUsername() != null ? post.getUsername() : getGeneratedUsername(post.getUser());
+                if (reportedContent == null || reportedContent.isBlank()) {
+                    reportedContent = post.getOriginalContent() != null ? post.getOriginalContent() : post.getTitle();
+                }
+            }
+        } else if ("COMMENT".equalsIgnoreCase(report.getContentType()) && report.getContentId() != null) {
+            Comment comment = commentRepository.findById(report.getContentId()).orElse(null);
+            if (comment != null) {
+                authorHandle = getGeneratedUsername(comment.getUser());
+                if (reportedContent == null || reportedContent.isBlank()) {
+                    reportedContent = comment.getOriginalContent();
+                }
+            }
+        }
+
         return ReportResponse.builder()
                 .id(report.getId())
                 .reportId(report.getFormattedReportId())
                 .reporterId(report.getReporter() != null ? report.getReporter().getId() : null)
-                .reporterUsername(report.getReporter() != null ? report.getReporter().getFullName() : null)
+                .reporterUsername(reporterHandle)
+                .authorUsername(authorHandle != null ? authorHandle : "anonymous")
+                .reportedContent(reportedContent)
                 .postId(report.getContentId() != null ? report.getContentId().toString() : null)
                 .contentType(report.getContentType())
                 .contentId(report.getContentId())

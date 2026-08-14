@@ -23,12 +23,26 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
+    private Long resolveUserId(Object principalObj) {
+        if (principalObj instanceof UserPrincipal userPrincipal && userPrincipal.getUser() != null) {
+            return userPrincipal.getUser().getId();
+        }
+        return null;
+    }
+
     @PostMapping
     @Operation(summary = "Create Anonymous Profile")
     public ResponseEntity<ApiResponse<ProfileResponse>> createProfile(
-            @AuthenticationPrincipal UserPrincipal principal,
+            @AuthenticationPrincipal Object principalObj,
             @Valid @RequestBody CreateProfileRequest request) {
-        Long userId = principal.getUser().getId();
+        Long userId = resolveUserId(principalObj);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<ProfileResponse>builder()
+                            .success(false)
+                            .message("Authentication required")
+                            .build());
+        }
         ProfileResponse response = profileService.createProfile(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Profile created successfully", response));
@@ -37,8 +51,15 @@ public class ProfileController {
     @GetMapping("/me")
     @Operation(summary = "Get My Profile")
     public ResponseEntity<ApiResponse<ProfileResponse>> getMyProfile(
-            @AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal.getUser().getId();
+            @AuthenticationPrincipal Object principalObj) {
+        Long userId = resolveUserId(principalObj);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<ProfileResponse>builder()
+                            .success(false)
+                            .message("Authentication required")
+                            .build());
+        }
         ProfileResponse response = profileService.getMyProfile(userId);
         return ResponseEntity.ok(ApiResponse.success("Profile fetched successfully", response));
     }
@@ -54,9 +75,16 @@ public class ProfileController {
     @PutMapping
     @Operation(summary = "Update My Profile")
     public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
-            @AuthenticationPrincipal UserPrincipal principal,
+            @AuthenticationPrincipal Object principalObj,
             @Valid @RequestBody UpdateProfileRequest request) {
-        Long userId = principal.getUser().getId();
+        Long userId = resolveUserId(principalObj);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<ProfileResponse>builder()
+                            .success(false)
+                            .message("Authentication required")
+                            .build());
+        }
         ProfileResponse response = profileService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
@@ -64,8 +92,15 @@ public class ProfileController {
     @DeleteMapping
     @Operation(summary = "Delete My Profile")
     public ResponseEntity<ApiResponse<Void>> deleteProfile(
-            @AuthenticationPrincipal UserPrincipal principal) {
-        Long userId = principal.getUser().getId();
+            @AuthenticationPrincipal Object principalObj) {
+        Long userId = resolveUserId(principalObj);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<Void>builder()
+                            .success(false)
+                            .message("Authentication required")
+                            .build());
+        }
         profileService.deleteProfile(userId);
         return ResponseEntity.ok(ApiResponse.success("Profile deleted successfully"));
     }

@@ -295,19 +295,24 @@ public class AdminServiceImpl implements AdminService {
 
     private AdminUserResponse mapToUserResponse(User user) {
         Profile profile = profileRepository.findByUser(user).orElse(null);
+        long postsCount = postRepository.countByUserId(user.getId());
+        long warningsCount = blockedContentRepository.countByUserIdAndStatus(user.getId(), "WARNING_ISSUED");
+
         return AdminUserResponse.builder()
                 .id(user.getId())
                 .userId(user.getFormattedUserId())
                 .email(user.getEmail())
                 .mobileNumber(user.getMobileNumber())
                 .fullName(user.getFullName())
-                .username(profile != null ? profile.getUsername() : user.getEmail())
+                .username(getGeneratedUsername(user))
                 .avatar(profile != null ? profile.getAvatar() : null)
                 .preferredLanguage(profile != null ? profile.getPreferredLanguage() : "EN")
                 .role(user.getRole())
                 .active(user.getActive())
                 .emailVerified(user.getEmailVerified())
                 .mobileVerified(user.getMobileVerified())
+                .postCount(postsCount)
+                .warningCount(warningsCount)
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
@@ -359,8 +364,43 @@ public class AdminServiceImpl implements AdminService {
                 .build();
     }
 
+    private String getGeneratedUsername(User user) {
+        if (user == null) return "anonymous";
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        if (profile != null && profile.getUsername() != null && !profile.getUsername().isBlank()) {
+            String u = profile.getUsername().trim();
+            return u.startsWith("@") ? u.substring(1) : u;
+        }
+        if (user.getEmail() != null && user.getEmail().contains("@")) {
+            return user.getEmail().split("@")[0];
+        }
+        return "user_" + user.getId();
+    }
+
     private ReportResponse mapToReportResponse(Report report) {
         User reporter = report.getReporter();
+        String reporterHandle = getGeneratedUsername(reporter);
+        String authorHandle = null;
+        String reportedContent = report.getDescription();
+
+        if ("POST".equalsIgnoreCase(report.getContentType()) && report.getContentId() != null) {
+            Post post = postRepository.findById(report.getContentId()).orElse(null);
+            if (post != null) {
+                authorHandle = post.getUsername() != null ? post.getUsername() : getGeneratedUsername(post.getUser());
+                if (reportedContent == null || reportedContent.isBlank()) {
+                    reportedContent = post.getOriginalContent() != null ? post.getOriginalContent() : post.getTitle();
+                }
+            }
+        } else if ("COMMENT".equalsIgnoreCase(report.getContentType()) && report.getContentId() != null) {
+            Comment comment = commentRepository.findById(report.getContentId()).orElse(null);
+            if (comment != null) {
+                authorHandle = getGeneratedUsername(comment.getUser());
+                if (reportedContent == null || reportedContent.isBlank()) {
+                    reportedContent = comment.getOriginalContent();
+                }
+            }
+        }
+
         String formattedPostId = null;
         if ("POST".equalsIgnoreCase(report.getContentType()) && report.getContentId() != null) {
             formattedPostId = String.format("POST_%02d", report.getContentId());
@@ -369,8 +409,10 @@ public class AdminServiceImpl implements AdminService {
         return ReportResponse.builder()
                 .id(report.getId())
                 .reportId(report.getFormattedReportId())
-                .reporterId(reporter.getId())
-                .reporterUsername(reporter.getEmail())
+                .reporterId(reporter != null ? reporter.getId() : null)
+                .reporterUsername(reporterHandle)
+                .authorUsername(authorHandle != null ? authorHandle : "anonymous")
+                .reportedContent(reportedContent)
                 .postId(formattedPostId)
                 .contentType(report.getContentType())
                 .contentId(report.getContentId())
@@ -409,7 +451,7 @@ public class AdminServiceImpl implements AdminService {
                 .id(item.getId())
                 .userId(item.getUser() != null ? item.getUser().getId() : null)
                 .contentType(item.getContentType())
-                .authorUsername(item.getAuthorUsername())
+                .authorUsername(getGeneratedUsername(item.getUser()))
                 .authorEmail(item.getAuthorEmail())
                 .originalContent(item.getOriginalContent())
                 .flaggedReason(item.getFlaggedReason())

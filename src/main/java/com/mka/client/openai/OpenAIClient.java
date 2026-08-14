@@ -1,10 +1,11 @@
 package com.mka.client.openai;
 
 import com.mka.dto.openai.OpenAIHealthResponse;
+import com.mka.dto.response.ModerationResult;
 
 /**
  * Reusable OpenAI service client contract for authentication, connection testing,
- * and future translation, transcription, and moderation operations.
+ * translation, transcription, and multimodal moderation operations.
  */
 public interface OpenAIClient {
 
@@ -24,41 +25,32 @@ public interface OpenAIClient {
 
     /**
      * Translates text using OpenAI Chat Completions API.
-     *
-     * @param text Original text content.
-     * @param sourceLanguageName Human readable source language name (e.g. English, Marathi).
-     * @param targetLanguageName Human readable target language name (e.g. Marathi, English).
-     * @param model Model name to use (e.g. gpt-4o-mini).
-     * @return Translated text response string.
      */
     String translateText(String text, String sourceLanguageName, String targetLanguageName, String model);
 
     /**
      * Transcribes spoken audio bytes into text using OpenAI Audio Transcriptions API.
-     *
-     * @param audioBytes Raw audio bytes.
-     * @param fileName File name e.g. voice_recording.webm.
-     * @param model Model name e.g. whisper-1.
-     * @param language Optional target speech language code e.g. HI, MR, EN.
-     * @return VoiceToTextResponse containing transcribed text and detected language.
      */
     com.mka.dto.response.VoiceToTextResponse transcribeAudio(byte[] audioBytes, String fileName, String model, String language);
 
     /**
-     * Moderates text content across multiple languages, transliterated scripts, death/violence threats,
-     * hate speech, communal/religious slurs, and abuse using OpenAI AI Moderation / Vision.
-     *
-     * @param text Original text content.
-     * @return "SAFE" or "UNSAFE: reason".
+     * Legacy single-text moderation check.
      */
     String moderateText(String text);
 
     /**
-     * Moderates an uploaded image file using OpenAI Vision capability.
-     *
-     * @param imageBytes Raw image bytes.
-     * @param mimeType Image MIME type (e.g. image/jpeg, image/png).
-     * @return "SAFE" or "UNSAFE: reason".
+     * Legacy single-image moderation check.
      */
     String moderateImage(byte[] imageBytes, String mimeType);
+
+    /**
+     * Official Multimodal Moderation using OpenAI /v1/moderations endpoint with omni-moderation-latest.
+     * Evaluates text, image, or text + image inputs together.
+     *
+     * @param text Post text content (optional/nullable)
+     * @param imageBytes Post image bytes (optional/nullable)
+     * @param imageMimeType Image MIME type (e.g. image/jpeg, image/png)
+     * @return ModerationResult with fail-closed status, flagged boolean, and category scores.
+     */
+    ModerationResult moderateMultimodal(String text, byte[] imageBytes, String imageMimeType);
 }

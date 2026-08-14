@@ -23,6 +23,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByUserId(Long userId, Pageable pageable);
 
+    long countByUserId(Long userId);
+
     long countByStatus(PostStatus status);
 
     long countByCreatedAtAfter(java.time.LocalDateTime dateTime);

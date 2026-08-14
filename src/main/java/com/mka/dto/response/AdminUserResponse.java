@@ -26,6 +26,8 @@ public class AdminUserResponse {
     private Boolean active;
     private Boolean emailVerified;
     private Boolean mobileVerified;
+    private Long postCount;
+    private Long warningCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

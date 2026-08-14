@@ -22,7 +22,7 @@ public class BlockedContent {
     private User user;
 
     @Column(name = "content_type", nullable = false)
-    private String contentType; // POST, COMMENT, MESSAGE
+    private String contentType; // POST, COMMENT, MESSAGE, POST_IMAGE
 
     @Column(name = "author_username")
     private String authorUsername;
@@ -30,7 +30,7 @@ public class BlockedContent {
     @Column(name = "author_email")
     private String authorEmail;
 
-    @Column(name = "original_content", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "original_content", columnDefinition = "LONGTEXT", nullable = false)
     private String originalContent;
 
     @Column(name = "flagged_reason")

@@ -19,6 +19,8 @@ public class ReportResponse {
     private String reportId;
     private Long reporterId;
     private String reporterUsername;
+    private String authorUsername;
+    private String reportedContent;
     private String postId;
     private String contentType;
     private Long contentId;
