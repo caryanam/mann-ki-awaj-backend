@@ -6,7 +6,7 @@ target/
 
 src/main/resources/application.properties
 
-
+/uploads
 ### STS ###
 .apt_generated
 .classpath
