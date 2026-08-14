@@ -7,8 +7,6 @@ import com.mka.service.AiService;
 import com.mka.entity.User;
 import com.mka.entity.BlockedContent;
 import com.mka.repository.BlockedContentRepository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -38,53 +36,48 @@ public class AiServiceImpl implements AiService {
     private static final List<String> PROHIBITED_KEYWORDS = Arrays.asList(
             "fuck", "shit", "bitch", "bastard", "asshole",
             "hate", "kill", "terrorist", "nigger", "cunt",
-            "chutiya", "madarchod", "bhenchod", "gaand", "harami"
+            "chutiya", "madarchod", "bhenchod", "gaand", "harami",
+            "marun takel", "marun takin", "marun takne", "maar dunga", "maar denge"
     );
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void moderateContent(User user, String text, String contentType) {
         if (!moderationEnabled || text == null || text.trim().isEmpty()) {
             return;
         }
 
         String lowerText = text.toLowerCase(Locale.ROOT);
+        String flaggedReason = null;
+
+        // 1. Fast Path: Local Keyword List Check
         for (String keyword : PROHIBITED_KEYWORDS) {
             if (lowerText.contains(keyword)) {
-                log.warn("AI Moderation triggered for content containing prohibited keyword: {}", keyword);
-
-                String handle = "anonymous";
-                String email = "anonymous@mka.com";
-                if (user != null) {
-                    email = user.getEmail();
-                    handle = email.split("@")[0];
-                }
-
-                BlockedContent blocked = BlockedContent.builder()
-                        .user(user)
-                        .contentType(contentType != null ? contentType : "POST")
-                        .authorUsername(handle)
-                        .authorEmail(email)
-                        .originalContent(text)
-                        .flaggedReason("Abusive keyword: " + keyword)
-                        .status("PENDING")
-                        .blockedAt(LocalDateTime.now())
-                        .build();
-
-                try {
-                    blockedContentRepository.save(blocked);
-                    log.info("Saved AI blocked content footprint for user: {}", email);
-                } catch (Exception e) {
-                    log.error("Failed to save blocked content log: {}", e.getMessage(), e);
-                }
-
-                throw new BadRequestException("Content blocked by AI moderation: contains abusive language or hate speech.");
+                flaggedReason = "Abusive keyword or threat detected: " + keyword;
+                log.warn("Fast-path AI Moderation triggered for keyword: {}", keyword);
+                break;
             }
+        }
+
+        // 2. AI Path: Multi-lingual AI Moderation via OpenAI LLM
+        if (flaggedReason == null && openAIClient.isConfigured()) {
+            try {
+                String aiResult = openAIClient.moderateText(text);
+                if (aiResult != null && aiResult.startsWith("UNSAFE")) {
+                    flaggedReason = "AI Content Moderation flagged: " + aiResult.replace("UNSAFE:", "").trim();
+                    log.warn("AI Multi-lingual Moderation flagged content for user {}: {}", user != null ? user.getEmail() : "anonymous", aiResult);
+                }
+            } catch (Exception e) {
+                log.error("AI Text moderation call failed: {}. Continuing with safe path.", e.getMessage());
+            }
+        }
+
+        if (flaggedReason != null) {
+            saveBlockedAuditLog(user, contentType != null ? contentType : "POST", text, flaggedReason);
+            throw new BadRequestException("Content blocked by AI moderation: " + flaggedReason);
         }
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String moderateAndSaveImage(MultipartFile file, User user) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("Uploaded image file is empty.");
@@ -105,32 +98,9 @@ public class AiServiceImpl implements AiService {
 
             if (moderationResult != null && moderationResult.startsWith("UNSAFE")) {
                 log.warn("AI Image Moderation flagged image for user {}: {}", user != null ? user.getEmail() : "anonymous", moderationResult);
-
-                String handle = "anonymous";
-                String email = "anonymous@mka.com";
-                if (user != null) {
-                    email = user.getEmail();
-                    handle = email.split("@")[0];
-                }
-
-                BlockedContent blocked = BlockedContent.builder()
-                        .user(user)
-                        .contentType("POST_IMAGE")
-                        .authorUsername(handle)
-                        .authorEmail(email)
-                        .originalContent("[Image File: " + file.getOriginalFilename() + "]")
-                        .flaggedReason(moderationResult)
-                        .status("PENDING")
-                        .blockedAt(LocalDateTime.now())
-                        .build();
-
-                try {
-                    blockedContentRepository.save(blocked);
-                } catch (Exception e) {
-                    log.error("Failed to save blocked image log footprint: {}", e.getMessage());
-                }
-
-                throw new BadRequestException("Image content blocked by AI moderation: " + moderationResult.replace("UNSAFE:", "").trim());
+                String reason = moderationResult.replace("UNSAFE:", "").trim();
+                saveBlockedAuditLog(user, "POST_IMAGE", "[Image File: " + file.getOriginalFilename() + "]", reason);
+                throw new BadRequestException("Image content blocked by AI moderation: " + reason);
             }
 
             java.io.File uploadsDir = new java.io.File("uploads");
@@ -159,6 +129,33 @@ public class AiServiceImpl implements AiService {
         } catch (Exception ex) {
             log.error("Failed to process image upload: {}", ex.getMessage(), ex);
             throw new BadRequestException("Could not upload and process image file: " + ex.getMessage());
+        }
+    }
+
+    private void saveBlockedAuditLog(User user, String contentType, String content, String flaggedReason) {
+        try {
+            String handle = "anonymous";
+            String email = "anonymous@mka.com";
+            if (user != null) {
+                email = user.getEmail();
+                handle = email.split("@")[0];
+            }
+
+            BlockedContent blocked = BlockedContent.builder()
+                    .user(user)
+                    .contentType(contentType)
+                    .authorUsername(handle)
+                    .authorEmail(email)
+                    .originalContent(content)
+                    .flaggedReason(flaggedReason)
+                    .status("PENDING")
+                    .blockedAt(LocalDateTime.now())
+                    .build();
+
+            blockedContentRepository.saveAndFlush(blocked);
+            log.info("Successfully saved & committed AI blocked content footprint to DB for user: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to save blocked content log to database: {}", e.getMessage(), e);
         }
     }
 

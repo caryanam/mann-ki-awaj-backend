@@ -471,6 +471,63 @@ public class OpenAIClientImpl implements OpenAIClient {
     }
 
     @Override
+    public String moderateText(String text) {
+        if (!isConfigured() || text == null || text.trim().isEmpty()) {
+            return "SAFE";
+        }
+
+        try {
+            String systemPrompt = """
+                    You are a strict safety content moderator for an online community.
+                    Evaluate the provided text regardless of its language, script, or transliteration (e.g. English, Hinglish, Minglish, Marathi in Devanagari or Latin script, Hindi, Urdu, Tamil, etc.).
+
+                    Strictly check for:
+                    1. Direct or indirect death threats, threats of murder, physical violence, bodily harm, self-harm, or terrorism (e.g., "marun takel", "tumko maar dunga", "I will kill you", "die", "gore").
+                    2. Communal or religious hate speech, religious slurs, inciting violence against any religion, caste, community, or nationality.
+                    3. Severe profanity, sexual abuse, obscene slurs, harassment, or dehumanizing abuse (e.g., "chutiya", "bhenchod", "madarchod", "gandu", "nigger", "cunt").
+
+                    If the text violates ANY of these rules, reply ONLY with 'UNSAFE: <brief reason>'.
+                    If the text is completely safe for a community platform, reply ONLY with 'SAFE'.
+                    """;
+
+            java.util.Map<String, Object> systemMessage = java.util.Map.of("role", "system", "content", systemPrompt);
+            java.util.Map<String, Object> userMessage = java.util.Map.of("role", "user", "content", text.trim());
+
+            java.util.Map<String, Object> requestBody = java.util.Map.of(
+                    "model", properties.getTranslationModel() != null ? properties.getTranslationModel() : "gpt-4o-mini",
+                    "messages", java.util.List.of(systemMessage, userMessage),
+                    "temperature", 0.0,
+                    "max_tokens", 50
+            );
+
+            log.info("Invoking AI Text Moderation for content: [{}]", text.trim());
+
+            java.util.Map responseMap = restClient.post()
+                    .uri("/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(java.util.Map.class);
+
+            if (responseMap != null && responseMap.containsKey("choices")) {
+                java.util.List choices = (java.util.List) responseMap.get("choices");
+                if (choices != null && !choices.isEmpty()) {
+                    java.util.Map choice = (java.util.Map) choices.get(0);
+                    java.util.Map message = (java.util.Map) choice.get("message");
+                    if (message != null && message.containsKey("content")) {
+                        String result = (String) message.get("content");
+                        if (result != null) return result.trim();
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("OpenAI AI text moderation check failed: {}. Falling back to keyword moderation.", ex.getMessage());
+        }
+
+        return "SAFE";
+    }
+
+    @Override
     public String moderateImage(byte[] imageBytes, String mimeType) {
         if (!isConfigured() || imageBytes == null || imageBytes.length == 0) {
             return "SAFE";

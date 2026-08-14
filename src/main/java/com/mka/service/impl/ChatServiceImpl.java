@@ -180,8 +180,8 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
 
-        if (room.getRequestSenderId() != null && room.getRequestSenderId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Sender cannot accept their own request.");
+        if ("ACCEPTED".equalsIgnoreCase(room.getRequestStatus())) {
+            return mapRoomToResponse(room, currentUser);
         }
 
         room.setRequestStatus("ACCEPTED");

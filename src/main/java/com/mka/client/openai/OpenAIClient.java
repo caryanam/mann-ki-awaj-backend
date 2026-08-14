@@ -45,6 +45,15 @@ public interface OpenAIClient {
     com.mka.dto.response.VoiceToTextResponse transcribeAudio(byte[] audioBytes, String fileName, String model, String language);
 
     /**
+     * Moderates text content across multiple languages, transliterated scripts, death/violence threats,
+     * hate speech, communal/religious slurs, and abuse using OpenAI AI Moderation / Vision.
+     *
+     * @param text Original text content.
+     * @return "SAFE" or "UNSAFE: reason".
+     */
+    String moderateText(String text);
+
+    /**
      * Moderates an uploaded image file using OpenAI Vision capability.
      *
      * @param imageBytes Raw image bytes.
