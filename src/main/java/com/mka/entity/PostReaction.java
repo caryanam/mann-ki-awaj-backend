@@ -27,7 +27,7 @@ public class PostReaction {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 50)
     private ReactionType reactionType;
 
     @Column(nullable = false)
