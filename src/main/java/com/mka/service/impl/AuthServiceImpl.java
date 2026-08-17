@@ -1,8 +1,7 @@
 package com.mka.service.impl;
 
 import com.mka.config.JwtService;
-import com.mka.dto.request.LoginRequest;
-import com.mka.dto.request.RegisterRequest;
+import com.mka.dto.request.*;
 import com.mka.dto.response.AuthResponse;
 import com.mka.dto.response.ProfileResponse;
 import com.mka.entity.Admin;
@@ -10,6 +9,7 @@ import com.mka.entity.Profile;
 import com.mka.entity.User;
 import com.mka.enums.Role;
 import com.mka.exception.ResourceAlreadyExistsException;
+import com.mka.exception.ResourceNotFoundException;
 import com.mka.exception.UnauthorizedException;
 import com.mka.mapper.ProfileMapper;
 import com.mka.repository.AdminRepository;
@@ -17,6 +17,7 @@ import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
 import com.mka.service.AuthService;
 import com.mka.service.EmailVerificationService;
+import com.mka.service.MobileVerificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -38,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
+    private final MobileVerificationService mobileVerificationService;
     private final ProfileMapper profileMapper;
 
     @Override
@@ -71,12 +73,9 @@ public class AuthServiceImpl implements AuthService {
 
             User savedUser = userRepository.save(existingUser);
 
-            // Dispatch verification OTP via email
             try {
                 emailVerificationService.sendVerificationOtp(savedUser);
-            } catch (Exception e) {
-                // Log non-blocking email delivery failure during initial registration
-            }
+            } catch (Exception e) {}
 
             return AuthResponse.builder()
                     .userId(savedUser.getId())
@@ -112,12 +111,9 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Dispatch verification OTP via email
         try {
             emailVerificationService.sendVerificationOtp(savedUser);
-        } catch (Exception e) {
-            // Log non-blocking email delivery failure during initial registration
-        }
+        } catch (Exception e) {}
 
         return AuthResponse.builder()
                 .userId(savedUser.getId())
@@ -132,16 +128,16 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String input = request.getEmail() != null ? request.getEmail().trim() : "";
 
         // 1. Check Admin repository first
-        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+        Optional<Admin> adminOpt = adminRepository.findByEmail(input.toLowerCase());
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             if (!admin.getActive() || admin.getDeleted()) {
                 throw new UnauthorizedException("Admin account is deactivated or deleted");
             }
-            authenticateCredentials(email, request.getPassword());
+            authenticateCredentials(admin.getEmail(), request.getPassword());
             String token = jwtService.generateToken(admin.getEmail(), admin.getRole().name());
 
             return AuthResponse.builder()
@@ -156,18 +152,22 @@ public class AuthServiceImpl implements AuthService {
                     .build();
         }
 
-        // 2. Check Standard User repository
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        // 2. Check Standard User repository (support both Email & Mobile Number)
+        User user = userRepository.findByEmail(input.toLowerCase())
+                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+
+        if (user == null) {
+            throw new ResourceNotFoundException("Account not found");
+        }
 
         if (!user.getActive() || user.getDeleted()) {
             throw new UnauthorizedException("User account is inactive or deleted");
         }
 
-        authenticateCredentials(email, request.getPassword());
+        authenticateCredentials(user.getEmail(), request.getPassword());
 
-        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new UnauthorizedException("Please verify your email OTP before logging in.");
+        if (!Boolean.TRUE.equals(user.getEmailVerified()) && !Boolean.TRUE.equals(user.getMobileVerified())) {
+            throw new UnauthorizedException("Please verify your email or mobile OTP before logging in.");
         }
 
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
@@ -187,11 +187,67 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
+
+        User user = userRepository.findByEmail(input.toLowerCase())
+                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+
+        if (user == null) {
+            throw new ResourceNotFoundException("Account not found");
+        }
+
+        // Dispatch OTP via Email or Mobile SMS
+        if (input.contains("@")) {
+            emailVerificationService.sendVerificationOtp(user);
+        } else {
+            mobileVerificationService.sendOtp(user);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void verifyForgotPasswordOtp(VerifyForgotPasswordOtpRequest request) {
+        String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
+
+        User user = userRepository.findByEmail(input.toLowerCase())
+                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+
+        if (user == null) {
+            throw new ResourceNotFoundException("Account not found");
+        }
+
+        if (input.contains("@")) {
+            emailVerificationService.verifyEmail(new VerifyEmailRequest(user.getEmail(), request.getOtp()));
+        } else {
+            mobileVerificationService.verifyOtp(new VerifyMobileRequest(user.getMobileNumber(), request.getOtp()));
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
+
+        User user = userRepository.findByEmail(input.toLowerCase())
+                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+
+        if (user == null) {
+            throw new ResourceNotFoundException("Account not found");
+        }
+
+        // Update password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     private void authenticateCredentials(String email, String password) {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
         } catch (Exception ex) {
-            throw new BadCredentialsException("Invalid email or password");
+            throw new BadCredentialsException("Invalid email/mobile or password");
         }
     }
 }

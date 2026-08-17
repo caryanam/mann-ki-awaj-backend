@@ -38,14 +38,9 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Authentication APIs
+                        // Authentication APIs (register, login, verify, forgot-password, reset-password)
                         .requestMatchers(
-                                "/api/auth/register",
-                                "/api/auth/login",
-                                "/api/auth/verify-email",
-                                "/api/auth/resend-verification",
-                                "/api/auth/verify-mobile",
-                                "/api/auth/resend-mobile-otp"
+                                "/api/auth/**"
                         ).permitAll()
 
                         // Static uploaded files
@@ -64,7 +59,6 @@ public class SecurityConfig {
 
                         // Admin APIs
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-
 
                         // Swagger APIs
                         .requestMatchers(
