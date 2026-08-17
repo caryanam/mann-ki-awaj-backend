@@ -41,9 +41,10 @@ public class AiServiceImpl implements AiService {
     private boolean translationEnabled;
 
     private static final List<String> PROHIBITED_KEYWORDS = Arrays.asList(
-            "fuck", "shit", "bitch", "bastard", "asshole",
-            "hate", "kill", "terrorist", "nigger", "cunt",
-            "chutiya", "madarchod", "bhenchod", "gaand", "harami",
+            "fuck", "fucker", "fucking", "fucked", "motherfucker", "shit", "bullshit", "bitch", "bastard", "asshole",
+            "cunt", "dick", "pussy", "slut", "whore", "nigger", "faggot", "retard",
+            "kill", "bomb", "threat", "terror", "terrorist", "die", "death", "attack", "destroy", "shoot", "stab",
+            "chutiya", "madarchod", "behenchod", "bhosdike", "gandu", "harami", "saala", "kamina", "lauda", "lode", "chut",
             "marun takel", "marun takin", "marun takne", "maar dunga", "maar denge"
     );
 

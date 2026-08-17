@@ -111,6 +111,10 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
+        
+        room.setUpdatedAt(LocalDateTime.now());
+        chatRoomRepository.save(room);
+
         ChatMessageResponse response = mapMessageToResponse(savedMessage);
 
         // Broadcast the message via Socket.IO to room operations AND personal user rooms

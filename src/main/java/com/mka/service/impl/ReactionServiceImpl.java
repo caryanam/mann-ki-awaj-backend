@@ -46,8 +46,12 @@ public class ReactionServiceImpl implements ReactionService {
         Optional<PostReaction> existingReaction = postReactionRepository.findByPostIdAndUserId(postId, user.getId());
         if (existingReaction.isPresent()) {
             PostReaction reaction = existingReaction.get();
-            reaction.setReactionType(reactionType);
-            postReactionRepository.save(reaction);
+            if (reaction.getReactionType() == reactionType) {
+                postReactionRepository.delete(reaction);
+            } else {
+                reaction.setReactionType(reactionType);
+                postReactionRepository.save(reaction);
+            }
         } else {
             PostReaction reaction = PostReaction.builder()
                     .post(post)
@@ -56,6 +60,10 @@ public class ReactionServiceImpl implements ReactionService {
                     .build();
             postReactionRepository.save(reaction);
         }
+
+        long totalLikes = postReactionRepository.findByPostId(postId).size();
+        post.setLikeCount(totalLikes);
+        postRepository.save(post);
     }
 
     @Override
@@ -69,6 +77,10 @@ public class ReactionServiceImpl implements ReactionService {
 
         postReactionRepository.findByPostIdAndUserId(postId, user.getId())
                 .ifPresent(postReactionRepository::delete);
+
+        long totalLikes = postReactionRepository.findByPostId(postId).size();
+        post.setLikeCount(totalLikes);
+        postRepository.save(post);
     }
 
     @Override
@@ -85,8 +97,12 @@ public class ReactionServiceImpl implements ReactionService {
         Optional<CommentReaction> existingReaction = commentReactionRepository.findByCommentIdAndUserId(commentId, user.getId());
         if (existingReaction.isPresent()) {
             CommentReaction reaction = existingReaction.get();
-            reaction.setReactionType(reactionType);
-            commentReactionRepository.save(reaction);
+            if (reaction.getReactionType() == reactionType) {
+                commentReactionRepository.delete(reaction);
+            } else {
+                reaction.setReactionType(reactionType);
+                commentReactionRepository.save(reaction);
+            }
         } else {
             CommentReaction reaction = CommentReaction.builder()
                     .comment(comment)

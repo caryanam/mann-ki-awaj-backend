@@ -192,30 +192,34 @@ public class PostServiceImpl implements PostService {
 
         if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
             try {
-                TranslationResponse response = translationService.translate(
-                        post.getOriginalContent(),
-                        post.getOriginalLanguage(),
-                        targetLanguage
-                );
-                if (response != null && response.getTranslatedText() != null) {
-                    translated = response.getTranslatedText();
+                if (translationService != null && post.getOriginalContent() != null && !post.getOriginalContent().isBlank()) {
+                    TranslationResponse response = translationService.translate(
+                            post.getOriginalContent(),
+                            post.getOriginalLanguage(),
+                            targetLanguage
+                    );
+                    if (response != null && response.getTranslatedText() != null) {
+                        translated = response.getTranslatedText();
+                    }
                 }
-            } catch (Exception ex) {
-                log.warn("Post content translation failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+            } catch (Throwable ex) {
+                log.warn("Post content translation skipped/failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
             }
 
             if (post.getTitle() != null && !post.getTitle().isBlank()) {
                 try {
-                    TranslationResponse titleResp = translationService.translate(
-                            post.getTitle(),
-                            post.getOriginalLanguage(),
-                            targetLanguage
-                    );
-                    if (titleResp != null && titleResp.getTranslatedText() != null) {
-                        translatedTitle = titleResp.getTranslatedText();
+                    if (translationService != null) {
+                        TranslationResponse titleResp = translationService.translate(
+                                post.getTitle(),
+                                post.getOriginalLanguage(),
+                                targetLanguage
+                        );
+                        if (titleResp != null && titleResp.getTranslatedText() != null) {
+                            translatedTitle = titleResp.getTranslatedText();
+                        }
                     }
-                } catch (Exception ex) {
-                    log.warn("Post title translation failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+                } catch (Throwable ex) {
+                    log.warn("Post title translation skipped/failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
                 }
             }
         }
