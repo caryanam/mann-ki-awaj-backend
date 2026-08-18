@@ -246,6 +246,7 @@ class OpenAIClientTest {
         doReturn(requestBodySpec).when(requestBodySpec).contentType(any());
         doReturn(requestBodySpec).when(requestBodySpec).body(any());
         doReturn(responseSpec).when(requestBodySpec).retrieve();
-        doReturn(resMap).when(responseSpec).body(any());
+        doReturn(resMap).when(responseSpec).body(any(Class.class));
     }
 }
+
