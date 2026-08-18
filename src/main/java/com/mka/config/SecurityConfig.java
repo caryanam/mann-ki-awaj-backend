@@ -116,24 +116,61 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+//     @Bean
+//     public CorsConfigurationSource corsConfigurationSource() {
+
+//         CorsConfiguration configuration = new CorsConfiguration();
+
+//         configuration.setAllowedOriginPatterns(List.of("*"));
+//         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+//         configuration.setAllowedHeaders(List.of("*"));
+//         configuration.setExposedHeaders(List.of("Authorization"));
+//         configuration.setAllowCredentials(true);
+
+//         UrlBasedCorsConfigurationSource source =
+//                 new UrlBasedCorsConfigurationSource();
+
+//         source.registerCorsConfiguration("/**", configuration);
+
+//         return source;
+//     }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Production frontend
+        configuration.setAllowedOrigins(List.of(
+        "https://awaazmanki.com",
+        "https://www.awaazmanki.com"
+        ));
+
+        configuration.setAllowedMethods(List.of(
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+        ));
+
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        configuration.setExposedHeaders(List.of(
+            "Authorization"
+    ));
 
-        source.registerCorsConfiguration("/**", configuration);
+    // Required if your frontend sends cookies/auth credentials
+    configuration.setAllowCredentials(true);
 
-        return source;
-    }
+    UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+
+    source.registerCorsConfiguration("/**", configuration);
+
+    return source;
+}
 
     @Bean
     public AuthenticationManager authenticationManager(
