@@ -52,6 +52,9 @@ class ChatServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private com.mka.config.PresenceManager presenceManager;
+
     @InjectMocks
     private ChatServiceImpl chatService;
 

@@ -47,6 +47,9 @@ class ReportServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private com.mka.repository.ProfileRepository profileRepository;
+
     @InjectMocks
     private ReportServiceImpl reportService;
 

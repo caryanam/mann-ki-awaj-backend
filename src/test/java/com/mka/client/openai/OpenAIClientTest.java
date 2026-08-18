@@ -9,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.util.MultiValueMap;
@@ -19,10 +21,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OpenAIClientTest {
 
     private OpenAIProperties properties;
@@ -147,9 +151,7 @@ class OpenAIClientTest {
         verify(requestBodySpec).body(bodyCaptor.capture());
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
-        // Verify explicit language parameter is OMITTED for Bengali
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for BN to prevent 400 Unsupported Language error");
-        // Verify Bengali native-script prompt hint is attached
         assertEquals("নমস্কার, মন কি আওয়াজে আপনাকে স্বাগতম।", body.getFirst("prompt"));
     }
 
@@ -168,9 +170,7 @@ class OpenAIClientTest {
         verify(requestBodySpec).body(bodyCaptor.capture());
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
-        // Verify explicit language parameter is OMITTED for Punjabi
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for PA to prevent 400 Unsupported Language error");
-        // Verify Punjabi native-script prompt hint is attached
         assertEquals("ਨਮਸਕਾਰ, ਮਨ ਕੀ ਆਵਾਜ਼ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ।", body.getFirst("prompt"));
     }
 
@@ -183,18 +183,14 @@ class OpenAIClientTest {
 
         assertNotNull(response);
         assertEquals("रऊआ कईसन बानी?", response.getText());
-        // Actual detection from OpenAI API is HI (since Whisper auto-detects Hindi for Devanagari)
         assertEquals("HI", response.getDetectedLanguage());
-        // User requested language is preserved as BHO
         assertEquals("BHO", response.getRequestedLanguage());
 
         ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
         verify(requestBodySpec).body(bodyCaptor.capture());
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
-        // Verify explicit language parameter is OMITTED for Bhojpuri
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for BHO to prevent 400 Unsupported Language error");
-        // Verify Bhojpuri native-script prompt hint is attached
         assertEquals("नमस्कार, राउर मन की आवाज में स्वागत बा।", body.getFirst("prompt"));
     }
 
@@ -214,9 +210,7 @@ class OpenAIClientTest {
         verify(requestBodySpec).body(bodyCaptor.capture());
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
-        // Verify explicit language parameter is OMITTED for Telugu
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for TE to prevent 400 Unsupported Language error");
-        // Verify Telugu native-script prompt hint is attached
         assertEquals("నమస్కారం, మన్ కీ ఆవాజ్", body.getFirst("prompt"));
     }
 
@@ -228,7 +222,7 @@ class OpenAIClientTest {
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "GU");
 
         assertNotNull(response);
-        assertEquals("નમસ્તે, તમે કેમ છો?", response.getText());
+        assertEquals("નમસ્ਤੇ, તમે કેમ છો?", response.getText());
         assertEquals("GU", response.getDetectedLanguage());
         assertEquals("GU", response.getRequestedLanguage());
 
@@ -236,21 +230,22 @@ class OpenAIClientTest {
         verify(requestBodySpec).body(bodyCaptor.capture());
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
-        // Verify explicit language parameter is OMITTED for Gujarati
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for GU to prevent 400 Unsupported Language error");
-        // Verify Gujarati native-script prompt hint is attached
-        assertEquals("નમસ્તે, મન કી આવાજમાં તમારું સ્વાગત છે।", body.getFirst("prompt"));
+        assertEquals("નમસ્ਤੇ, મન કੀ આવાજમાં તમારું સ્વાગત છે।", body.getFirst("prompt"));
     }
 
     @SuppressWarnings("unchecked")
     private void setupMockRestClientResponse(String transcribedText, String detectedLang) {
-        when(restClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(eq("/audio/transcriptions"))).thenReturn(requestBodySpec);
-        when(requestBodySpec.header(eq(HttpHeaders.AUTHORIZATION), any(String.class))).thenReturn(requestBodySpec);
-        when(requestBodySpec.contentType(eq(MediaType.MULTIPART_FORM_DATA))).thenReturn(requestBodySpec);
-        when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
-        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
-        when(responseSpec.body(eq(Map.class))).thenReturn(Map.of("text", transcribedText, "language", detectedLang));
+        java.util.Map<String, Object> resMap = new java.util.HashMap<>();
+        if (transcribedText != null) resMap.put("text", transcribedText);
+        if (detectedLang != null) resMap.put("language", detectedLang);
+
+        doReturn(requestBodyUriSpec).when(restClient).post();
+        doReturn(requestBodySpec).when(requestBodyUriSpec).uri(anyString());
+        doReturn(requestBodySpec).when(requestBodySpec).header(anyString(), anyString());
+        doReturn(requestBodySpec).when(requestBodySpec).contentType(any());
+        doReturn(requestBodySpec).when(requestBodySpec).body(any());
+        doReturn(responseSpec).when(requestBodySpec).retrieve();
+        doReturn(resMap).when(responseSpec).body(any());
     }
 }

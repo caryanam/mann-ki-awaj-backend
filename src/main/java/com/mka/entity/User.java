@@ -50,6 +50,13 @@ public class User extends BaseEntity {
     @Builder.Default
     private Boolean mobileVerified = false;
 
+    @Column(name = "warning_count")
+    @Builder.Default
+    private Integer warningCount = 0;
+
+    @Column(name = "muted_until")
+    private java.time.LocalDateTime mutedUntil;
+
     public String getUsername() {
         return email;
     }

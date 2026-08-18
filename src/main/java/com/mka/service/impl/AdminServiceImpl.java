@@ -88,12 +88,32 @@ public class AdminServiceImpl implements AdminService {
     @Transactional
     public void sendWarning(Long userId, SendWarningRequest request) {
         User user = getUser(userId);
+
+        int currentCount = user.getWarningCount() != null ? user.getWarningCount() : 0;
+        int newCount = Math.max(currentCount + 1, request.getWarningLevel() == WarningLevel.SECOND ? 2 : (request.getWarningLevel() == WarningLevel.FINAL ? 3 : 1));
+        user.setWarningCount(newCount);
+
+        String notifMsg;
+        NotificationType type = NotificationType.WARNING;
+        if (request.getWarningLevel() == WarningLevel.FIRST && newCount < 2) {
+            notifMsg = "⚠️ Strike 1 Warning: " + request.getMessage() + " (Note: Further violations will result in a 48-hour posting & messaging mute)";
+        } else if (request.getWarningLevel() == WarningLevel.SECOND || newCount == 2) {
+            user.setMutedUntil(LocalDateTime.now().plusHours(48));
+            notifMsg = "⛔ Strike 2 Warning: " + request.getMessage() + " (Effect: 48-Hour posting, commenting, and private messaging restriction applied)";
+        } else {
+            user.setActive(false);
+            type = NotificationType.ACCOUNT_BLOCKED;
+            notifMsg = "🚫 Strike 3 Final Warning: " + request.getMessage() + " (Effect: Account permanently suspended due to repeated violations)";
+        }
+
+        userRepository.save(user);
+
         notificationService.createNotification(
                 user,
                 null,
                 "system_avatar",
-                NotificationType.WARNING,
-                "WARNING (" + request.getWarningLevel() + "): " + request.getMessage(),
+                type,
+                notifMsg,
                 null
         );
     }
@@ -468,12 +488,25 @@ public class AdminServiceImpl implements AdminService {
 
         User user = blocked.getUser();
         if (user != null) {
+            String notifMsg;
+            NotificationType type = NotificationType.WARNING;
+            if (request.getWarningLevel() == WarningLevel.FIRST) {
+                notifMsg = "⚠️ Strike 1 Warning: " + request.getMessage() + " (Note: Further violations will result in a 48-hour posting & messaging mute)";
+            } else if (request.getWarningLevel() == WarningLevel.SECOND) {
+                notifMsg = "⛔ Strike 2 Warning: " + request.getMessage() + " (Effect: 48-Hour posting, commenting, and private messaging restriction applied)";
+            } else {
+                user.setActive(false);
+                userRepository.save(user);
+                type = NotificationType.ACCOUNT_BLOCKED;
+                notifMsg = "🚫 Strike 3 Final Warning: " + request.getMessage() + " (Effect: Account permanently suspended due to repeated violations)";
+            }
+
             notificationService.createNotification(
                     user,
                     null,
                     "system_avatar",
-                    NotificationType.WARNING,
-                    "WARNING (" + request.getWarningLevel() + "): " + request.getMessage(),
+                    type,
+                    notifMsg,
                     null
             );
         }

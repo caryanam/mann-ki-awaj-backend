@@ -123,7 +123,7 @@ class AdminServiceImplTest {
                 isNull(),
                 eq("system_avatar"),
                 eq(NotificationType.WARNING),
-                contains("WARNING (FIRST): Repeated abusive language violation"),
+                contains("Strike 1 Warning: Repeated abusive language violation"),
                 isNull()
         );
     }

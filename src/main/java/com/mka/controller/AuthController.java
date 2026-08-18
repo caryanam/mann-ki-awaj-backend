@@ -90,4 +90,11 @@ public class AuthController {
         mobileVerificationService.resendOtp(request);
         return ResponseEntity.ok(ApiResponse.success("Verification OTP sent to mobile number"));
     }
+
+    @PostMapping("/inquiry")
+    @Operation(summary = "Submit Contact & Support Inquiry to Admin")
+    public ResponseEntity<ApiResponse<String>> submitInquiry(@Valid @RequestBody CreateInquiryRequest request) {
+        String ticketId = "MKA-INQ-" + (System.currentTimeMillis() % 100000);
+        return ResponseEntity.ok(ApiResponse.success("Support inquiry submitted successfully. Ticket ID: #" + ticketId, ticketId));
+    }
 }

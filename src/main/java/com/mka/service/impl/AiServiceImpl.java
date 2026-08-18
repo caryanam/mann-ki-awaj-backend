@@ -57,12 +57,17 @@ public class AiServiceImpl implements AiService {
         String lowerText = text.toLowerCase(Locale.ROOT);
         String flaggedReason = null;
 
-        // 1. Fast Path: Local Keyword List Check
-        for (String keyword : PROHIBITED_KEYWORDS) {
-            if (lowerText.contains(keyword)) {
-                flaggedReason = "Abusive keyword or threat detected: " + keyword;
-                log.warn("Fast-path AI Moderation triggered for keyword: {}", keyword);
-                break;
+        // 1. Fast Path: Local Keyword & External URL/Link Check
+        if (lowerText.matches(".*(https?://|www\\.|[a-z0-9-]+\\.(com|org|net|io|co|in|info|biz|me|app|dev|xyz|tech|online|store|site|link|top)).*")) {
+            flaggedReason = "External links or web URLs are not permitted.";
+            log.warn("Fast-path AI Moderation triggered for external link/URL");
+        } else {
+            for (String keyword : PROHIBITED_KEYWORDS) {
+                if (lowerText.contains(keyword)) {
+                    flaggedReason = "Abusive keyword or threat detected: " + keyword;
+                    log.warn("Fast-path AI Moderation triggered for keyword: {}", keyword);
+                    break;
+                }
             }
         }
 

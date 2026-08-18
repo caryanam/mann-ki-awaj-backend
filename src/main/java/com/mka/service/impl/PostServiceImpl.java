@@ -55,6 +55,13 @@ public class PostServiceImpl implements PostService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new IllegalArgumentException("Your account has been permanently suspended due to repeated violations.");
+        }
+        if (user.getMutedUntil() != null && java.time.LocalDateTime.now().isBefore(user.getMutedUntil())) {
+            throw new IllegalArgumentException("Your account is currently restricted from creating new posts for 48 hours due to a safety warning.");
+        }
+
         Profile profile = profileRepository.findByUser(user).orElse(null);
         String avatar = profile != null && profile.getAvatar() != null ? profile.getAvatar() : "avatar_default";
         String preferredLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
