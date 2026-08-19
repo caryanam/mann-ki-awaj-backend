@@ -151,10 +151,110 @@ public class CommentServiceImpl implements CommentService {
         Page<Comment> rootComments = commentRepository.findByPostIdAndParentCommentIsNullAndStatus(
                 postId, CommentStatus.ACTIVE, pageable);
 
-        return rootComments.map(c -> {
-            CommentResponse resp = mapToResponse(c, user);
-            List<Comment> childReplies = commentRepository.findByParentCommentIdAndStatus(c.getId(), CommentStatus.ACTIVE);
-            resp.setReplies(childReplies.stream().map(reply -> mapToResponse(reply, user)).collect(Collectors.toList()));
+        if (rootComments.isEmpty()) {
+            return rootComments.map(c -> null);
+        }
+
+        List<Long> rootCommentIds = rootComments.getContent().stream().map(Comment::getId).collect(Collectors.toList());
+        List<Comment> allReplies = commentRepository.findByParentCommentIdInAndStatus(rootCommentIds, CommentStatus.ACTIVE);
+
+        Map<Long, List<Comment>> repliesByParentId = allReplies.stream()
+                .filter(r -> r.getParentComment() != null)
+                .collect(Collectors.groupingBy(r -> r.getParentComment().getId()));
+
+        List<Comment> allComments = new java.util.ArrayList<>(rootComments.getContent());
+        allComments.addAll(allReplies);
+
+        List<Long> allCommentIds = allComments.stream().map(Comment::getId).collect(Collectors.toList());
+
+        java.util.Set<Long> authorUserIds = allComments.stream()
+                .map(c -> c.getUser() != null ? c.getUser().getId() : null)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<Profile> authorProfiles = authorUserIds.isEmpty() ? List.of() :
+                profileRepository.findByUserIdIn(new java.util.ArrayList<>(authorUserIds));
+
+        Map<Long, Profile> authorProfilesByUserId = authorProfiles.stream()
+                .filter(p -> p.getUser() != null)
+                .collect(Collectors.toMap(p -> p.getUser().getId(), p -> p, (p1, p2) -> p1));
+
+        String userLang = "EN";
+        if (user != null) {
+            Profile currentUserProfile = authorProfilesByUserId.get(user.getId());
+            if (currentUserProfile == null) {
+                currentUserProfile = profileRepository.findByUser(user).orElse(null);
+            }
+            if (currentUserProfile != null && currentUserProfile.getPreferredLanguage() != null) {
+                userLang = currentUserProfile.getPreferredLanguage();
+            }
+        }
+
+        Map<Long, Map<ReactionType, Long>> reactionCountsByCommentId = new java.util.HashMap<>();
+        if (!allCommentIds.isEmpty()) {
+            List<CommentReactionRepository.CommentReactionCountProjection> counts =
+                    commentReactionRepository.findReactionCountsByCommentIdIn(allCommentIds);
+            for (CommentReactionRepository.CommentReactionCountProjection projection : counts) {
+                reactionCountsByCommentId
+                        .computeIfAbsent(projection.getCommentId(), k -> new EnumMap<>(ReactionType.class))
+                        .put(projection.getReactionType(), projection.getCount());
+            }
+        }
+
+        java.util.Set<Long> userLikedCommentIds = (user != null && !allCommentIds.isEmpty())
+                ? new java.util.HashSet<>(commentLikeRepository.findLikedCommentIdsByUserIdAndCommentIdIn(user.getId(), allCommentIds))
+                : java.util.Set.of();
+
+        final String finalUserLang = userLang;
+
+        java.util.function.Function<Comment, CommentResponse> mapCommentInBatch = (c) -> {
+            String translated = c.getOriginalContent();
+            if (finalUserLang != null && !finalUserLang.equalsIgnoreCase(c.getOriginalLanguage())) {
+                try {
+                    TranslationResponse resp = translationService.translate(
+                            c.getOriginalContent(),
+                            c.getOriginalLanguage(),
+                            finalUserLang
+                    );
+                    if (resp != null && resp.getTranslatedText() != null) {
+                        translated = resp.getTranslatedText();
+                    }
+                } catch (Exception ex) {
+                    // Fallback gracefully
+                }
+            }
+
+            Map<ReactionType, Long> reactionCounts = reactionCountsByCommentId.getOrDefault(c.getId(), Map.of());
+            boolean isLiked = userLikedCommentIds.contains(c.getId());
+
+            Profile authorProfile = c.getUser() != null ? authorProfilesByUserId.get(c.getUser().getId()) : null;
+            String handle = authorProfile != null && authorProfile.getUsername() != null
+                    ? authorProfile.getUsername()
+                    : (c.getUser() != null && c.getUser().getEmail() != null ? c.getUser().getEmail().split("@")[0] : "anonymous");
+
+            return CommentResponse.builder()
+                    .id(c.getId())
+                    .postId(c.getPost().getId())
+                    .parentCommentId(c.getParentComment() != null ? c.getParentComment().getId() : null)
+                    .authorId(c.getUser() != null ? c.getUser().getId() : null)
+                    .username(handle)
+                    .authorUsername(handle)
+                    .authorAvatar(c.getAuthorAvatar())
+                    .originalContent(c.getOriginalContent())
+                    .translatedContent(translated)
+                    .originalLanguage(c.getOriginalLanguage())
+                    .displayLanguage(finalUserLang != null ? finalUserLang : c.getOriginalLanguage())
+                    .likeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L)
+                    .reactionCounts(reactionCounts)
+                    .isLikedByCurrentUser(isLiked)
+                    .createdAt(c.getCreatedAt())
+                    .build();
+        };
+
+        return rootComments.map(root -> {
+            CommentResponse resp = mapCommentInBatch.apply(root);
+            List<Comment> childReplies = repliesByParentId.getOrDefault(root.getId(), List.of());
+            resp.setReplies(childReplies.stream().map(mapCommentInBatch).collect(Collectors.toList()));
             return resp;
         });
     }

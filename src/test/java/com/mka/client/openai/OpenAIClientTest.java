@@ -100,13 +100,13 @@ class OpenAIClientTest {
 
     @Test
     void testTranscribeAudio_Hindi_SendsExplicitLanguageCodeAndPrompt() {
-        setupMockRestClientResponse("नमस्ते", "hi");
+        setupMockRestClientResponse("\u0928\u092E\u0938\u094D\u0924\u0947", "hi");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "HI");
 
         assertNotNull(response);
-        assertEquals("नमस्ते", response.getText());
+        assertEquals("\u0928\u092E\u0938\u094D\u0924\u0947", response.getText());
         assertEquals("HI", response.getDetectedLanguage());
 
         ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
@@ -114,18 +114,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertEquals("hi", body.getFirst("language"));
-        assertEquals("नमस्कार, मन की आवाज में आपका स्वागत है।", body.getFirst("prompt"));
+        assertEquals("\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948\u0964", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Marathi_SendsExplicitLanguageCodeAndPrompt() {
-        setupMockRestClientResponse("नमस्कार", "mr");
+        setupMockRestClientResponse("\u0928\u092E\u0938\u094D\u0915\u093E\u0930", "mr");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "MR");
 
         assertNotNull(response);
-        assertEquals("नमस्कार", response.getText());
+        assertEquals("\u0928\u092E\u0938\u094D\u0915\u093E\u0930", response.getText());
         assertEquals("MR", response.getDetectedLanguage());
 
         ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
@@ -133,18 +133,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertEquals("mr", body.getFirst("language"));
-        assertEquals("नमस्कार, मन की आवाज में आपका स्वागत है।", body.getFirst("prompt"));
+        assertEquals("\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948\u0964", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Bengali_OmitsLanguageParamAndUsesBengaliPrompt() {
-        setupMockRestClientResponse("আপনি কেমন আছেন?", "bn");
+        setupMockRestClientResponse("\u0986\u09AA\u09A8\u09BF \u0995\u09C7\u09AE\u09A8 \u0986\u099B\u09C7\u09A8?", "bn");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "BN");
 
         assertNotNull(response);
-        assertEquals("আপনি কেমন আছেন?", response.getText());
+        assertEquals("\u0986\u09AA\u09A8\u09BF \u0995\u09C7\u09AE\u09A8 \u0986\u099B\u09C7\u09A8?", response.getText());
         assertEquals("BN", response.getDetectedLanguage());
 
         ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
@@ -152,18 +152,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for BN to prevent 400 Unsupported Language error");
-        assertEquals("নমস্কার, মন কি আওয়াজে আপনাকে স্বাগতম।", body.getFirst("prompt"));
+        assertEquals("\u09A8\u09AE\u09B8\u09CD\u0995\u09BE\u09B0, \u09AE\u09A8 \u0995\u09BF \u0986\u0993\u09AF\u09BC\u09BE\u099C\u09C7 \u0986\u09AA\u09A8\u09BE\u0995\u09C7 \u09B8\u09CD\u09AC\u09BE\u0997\u09A4\u09AE\u0964", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Punjabi_OmitsLanguageParamAndUsesPunjabiPrompt() {
-        setupMockRestClientResponse("ਤੁਸੀਂ ਕਿਵੇਂ ਹੋ?", "pa");
+        setupMockRestClientResponse("\u0A24\u0A41\u0A38\u0A40\u0A02 \u0A15\u0A3F\u0A35\u0A47\u0A02 \u0A39\u0A4B?", "pa");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "PA");
 
         assertNotNull(response);
-        assertEquals("ਤੁਸੀਂ ਕਿਵੇਂ ਹੋ?", response.getText());
+        assertEquals("\u0A24\u0A41\u0A38\u0A40\u0A02 \u0A15\u0A3F\u0A35\u0A47\u0A02 \u0A39\u0A4B?", response.getText());
         assertEquals("PA", response.getDetectedLanguage());
 
         ArgumentCaptor<MultiValueMap<String, Object>> bodyCaptor = ArgumentCaptor.forClass(MultiValueMap.class);
@@ -171,18 +171,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for PA to prevent 400 Unsupported Language error");
-        assertEquals("ਨਮਸਕਾਰ, ਮਨ ਕੀ ਆਵਾਜ਼ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ।", body.getFirst("prompt"));
+        assertEquals("\u0A28\u0A2E\u0A38\u0A15\u0A3E\u0A30, \u0A2E\u0A28 \u0A15\u0A40 \u0A06\u0A35\u0A3E\u0A1C\u0A3C \u0A35\u0A3F\u0A71\u0A1A \u0A24\u0A41\u0A39\u0A3E\u0A21\u0A3E \u0A38\u0A35\u0A3E\u0A17\u0A24 \u0A39\u0A48\u0964", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Bhojpuri_PreservesRequestedLanguageAndSeparatesActualDetection() {
-        setupMockRestClientResponse("रऊआ कईसन बानी?", "hi");
+        setupMockRestClientResponse("\u0930\u090A\u0906 \u0915\u0908\u0938\u0928 \u092C\u093E\u0928\u0940?", "hi");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "BHO");
 
         assertNotNull(response);
-        assertEquals("रऊआ कईसन बानी?", response.getText());
+        assertEquals("\u0930\u090A\u0906 \u0915\u0908\u0938\u0928 \u092C\u093E\u0928\u0940?", response.getText());
         assertEquals("HI", response.getDetectedLanguage());
         assertEquals("BHO", response.getRequestedLanguage());
 
@@ -191,18 +191,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for BHO to prevent 400 Unsupported Language error");
-        assertEquals("नमस्कार, राउर मन की आवाज में स्वागत बा।", body.getFirst("prompt"));
+        assertEquals("\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u0930\u093E\u0909\u0930 \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0938\u094D\u0935\u093E\u0917\u0924 \u092C\u093E\u0964", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Telugu_OmitsLanguageParamAndUsesTeluguPrompt() {
-        setupMockRestClientResponse("నమస్కారం, మీరు ఎలా ఉన్నారు?", "te");
+        setupMockRestClientResponse("\u0C28\u0C2E\u0C38\u0C4D\u0C15\u0C3E\u0C30\u0C02, \u0C2E\u0C40\u0C30\u0C41 \u0C0E\u0C32\u0C3E \u0C09\u0C28\u0C4D\u0C28\u0C3E\u0C30\u0C41?", "te");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "TE");
 
         assertNotNull(response);
-        assertEquals("నమస్కారం, మీరు ఎలా ఉన్నారు?", response.getText());
+        assertEquals("\u0C28\u0C2E\u0C38\u0C4D\u0C15\u0C3E\u0C30\u0C02, \u0C2E\u0C40\u0C30\u0C41 \u0C0E\u0C32\u0C3E \u0C09\u0C28\u0C4D\u0C28\u0C3E\u0C30\u0C41?", response.getText());
         assertEquals("TE", response.getDetectedLanguage());
         assertEquals("TE", response.getRequestedLanguage());
 
@@ -211,18 +211,18 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for TE to prevent 400 Unsupported Language error");
-        assertEquals("నమస్కారం, మన్ కీ ఆవాజ్", body.getFirst("prompt"));
+        assertEquals("\u0C28\u0C2E\u0C38\u0C4D\u0C15\u0C3E\u0C30\u0C02, \u0C2E\u0C28\u0C4D \u0C15\u0C40 \u0C06\u0C35\u0C3E\u0C1C\u0C4D", body.getFirst("prompt"));
     }
 
     @Test
     void testTranscribeAudio_Gujarati_OmitsLanguageParamAndUsesGujaratiPrompt() {
-        setupMockRestClientResponse("નમસ્તે, તમે કેમ છો?", "gu");
+        setupMockRestClientResponse("\u0AA8\u0AAE\u0AB8\u0ACD\u0AA4\u0AC7, \u0AA4\u0AAE\u0AC7 \u0A95\u0AC7\u0AAE \u0A9B\u0ACB?", "gu");
 
         byte[] audioBytes = new byte[]{1, 2, 3, 4};
         VoiceToTextResponse response = client.transcribeAudio(audioBytes, "voice.webm", "whisper-1", "GU");
 
         assertNotNull(response);
-        assertEquals("નમસ્ਤੇ, તમે કેમ છો?", response.getText());
+        assertEquals("\u0AA8\u0AAE\u0AB8\u0ACD\u0AA4\u0AC7, \u0AA4\u0AAE\u0AC7 \u0A95\u0AC7\u0AAE \u0A9B\u0ACB?", response.getText());
         assertEquals("GU", response.getDetectedLanguage());
         assertEquals("GU", response.getRequestedLanguage());
 
@@ -231,7 +231,7 @@ class OpenAIClientTest {
         MultiValueMap<String, Object> body = bodyCaptor.getValue();
 
         assertNull(body.getFirst("language"), "Language parameter MUST be omitted for GU to prevent 400 Unsupported Language error");
-        assertEquals("નમસ્ਤੇ, મન કੀ આવાજમાં તમારું સ્વાગત છે।", body.getFirst("prompt"));
+        assertEquals("\u0AA8\u0AAE\u0AB8\u0ACD\u0A24\u0A47, \u0AAE\u0AA8 \u0A95\u0A40 \u0A86\u0AB5\u0ABE\u0A9C\u0AAE\u0ABE\u0A82 \u0AA4\u0AAE\u0ABE\u0AB0\u0AC1\u0A82 \u0AB8\u0ACD\u0AB5\u0ABE\u0A97\u0AA4 \u0A9B\u0AC7\u0964", body.getFirst("prompt"));
     }
 
     @SuppressWarnings("unchecked")
@@ -244,7 +244,7 @@ class OpenAIClientTest {
         doReturn(requestBodySpec).when(requestBodyUriSpec).uri(anyString());
         doReturn(requestBodySpec).when(requestBodySpec).header(anyString(), anyString());
         doReturn(requestBodySpec).when(requestBodySpec).contentType(any());
-        doReturn(requestBodySpec).when(requestBodySpec).body(any());
+        doReturn(requestBodySpec).when(requestBodySpec).body(any(Object.class));
         doReturn(responseSpec).when(requestBodySpec).retrieve();
         doReturn(resMap).when(responseSpec).body(any(Class.class));
     }

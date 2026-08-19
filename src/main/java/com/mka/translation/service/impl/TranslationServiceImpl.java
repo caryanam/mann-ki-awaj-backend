@@ -48,10 +48,10 @@ public class TranslationServiceImpl implements TranslationService {
         String srcLang = sourceLanguage.trim();
         String tgtLang = targetLanguage.trim();
 
-        // 1. Same language check: Return original text immediately
+        // 1. Same language check: Return original text immediately if non-auto and identical
         SupportedLanguage srcEnum = SupportedLanguage.fromCode(srcLang);
         SupportedLanguage tgtEnum = SupportedLanguage.fromCode(tgtLang);
-        if (srcEnum == tgtEnum || srcLang.equalsIgnoreCase(tgtLang)) {
+        if (srcEnum != null && tgtEnum != null && (srcEnum == tgtEnum || srcLang.equalsIgnoreCase(tgtLang))) {
             log.info("Source and target language identical [{}]. Returning original text.", srcLang);
             return TranslationResponse.builder()
                     .originalText(cleanText)

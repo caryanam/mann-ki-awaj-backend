@@ -22,8 +22,10 @@ public class CreateProfileRequest {
     @Size(max = 250, message = "Bio cannot exceed 250 characters")
     private String bio;
 
+    @Size(max = 500, message = "Avatar URL/path cannot exceed 500 characters")
     private String avatar;
 
+    @Size(max = 10, message = "Preferred language code cannot exceed 10 characters")
     @Builder.Default
     private String preferredLanguage = "EN";
 }

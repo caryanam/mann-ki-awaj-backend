@@ -40,7 +40,8 @@ public class SecurityConfig {
 
                         // Authentication APIs (register, login, verify, forgot-password, reset-password)
                         .requestMatchers(
-                                "/api/auth/**"
+                                "/api/auth/**",
+                                "/api/v1/translation/**"
                         ).permitAll()
 
                         // Static uploaded files
@@ -116,61 +117,44 @@ public class SecurityConfig {
         return http.build();
     }
 
-//     @Bean
-//     public CorsConfigurationSource corsConfigurationSource() {
 
-//         CorsConfiguration configuration = new CorsConfiguration();
 
-//         configuration.setAllowedOriginPatterns(List.of("*"));
-//         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-//         configuration.setAllowedHeaders(List.of("*"));
-//         configuration.setExposedHeaders(List.of("Authorization"));
-//         configuration.setAllowCredentials(true);
-
-//         UrlBasedCorsConfigurationSource source =
-//                 new UrlBasedCorsConfigurationSource();
-
-//         source.registerCorsConfiguration("/**", configuration);
-
-//         return source;
-//     }
-
-        @Bean
-        public CorsConfigurationSource corsConfigurationSource() {
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Production frontend
+        // Allowed origins for local development and production environments
         configuration.setAllowedOrigins(List.of(
-        "https://awaazmanki.com",
-        "https://www.awaazmanki.com"
+                "https://awaazmanki.com",
+                "https://www.awaazmanki.com",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173"
         ));
 
         configuration.setAllowedMethods(List.of(
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "OPTIONS"
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
         ));
 
         configuration.setAllowedHeaders(List.of("*"));
 
         configuration.setExposedHeaders(List.of(
-            "Authorization"
-    ));
+                "Authorization"
+        ));
 
-    // Required if your frontend sends cookies/auth credentials
-    configuration.setAllowCredentials(true);
+        // Required for authenticated cross-origin requests
+        configuration.setAllowCredentials(true);
 
-    UrlBasedCorsConfigurationSource source =
-            new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
 
-    source.registerCorsConfiguration("/**", configuration);
-
-    return source;
-}
+        return source;
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(

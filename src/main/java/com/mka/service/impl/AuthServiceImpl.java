@@ -5,14 +5,19 @@ import com.mka.dto.request.*;
 import com.mka.dto.response.AuthResponse;
 import com.mka.dto.response.ProfileResponse;
 import com.mka.entity.Admin;
+import com.mka.entity.EmailVerification;
+import com.mka.entity.MobileVerification;
 import com.mka.entity.Profile;
 import com.mka.entity.User;
 import com.mka.enums.Role;
 import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.ResourceNotFoundException;
 import com.mka.exception.UnauthorizedException;
+import com.mka.exception.ValidationException;
 import com.mka.mapper.ProfileMapper;
 import com.mka.repository.AdminRepository;
+import com.mka.repository.EmailVerificationRepository;
+import com.mka.repository.MobileVerificationRepository;
 import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
 import com.mka.service.AuthService;
@@ -35,6 +40,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
     private final ProfileRepository profileRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
+    private final MobileVerificationRepository mobileVerificationRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
@@ -56,12 +63,10 @@ public class AuthServiceImpl implements AuthService {
                 throw new ResourceAlreadyExistsException("Email is already registered");
             }
 
-            // Unverified user - check mobile number conflicts with other verified users
+            // Unverified user - check mobile number conflicts with other users
             Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
-            if (userWithMobileOpt.isPresent() && !userWithMobileOpt.get().getEmail().equals(email)) {
-                if (Boolean.TRUE.equals(userWithMobileOpt.get().getEmailVerified())) {
-                    throw new ResourceAlreadyExistsException("Mobile number is already registered by another verified user");
-                }
+            if (userWithMobileOpt.isPresent() && !userWithMobileOpt.get().getEmail().equalsIgnoreCase(email)) {
+                throw new ResourceAlreadyExistsException("Mobile number is already registered by another user");
             }
 
             // Update registration details and password
@@ -208,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public void verifyForgotPasswordOtp(VerifyForgotPasswordOtpRequest request) {
         String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
 
@@ -220,9 +225,17 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (input.contains("@")) {
-            emailVerificationService.verifyEmail(new VerifyEmailRequest(user.getEmail(), request.getOtp()));
+            EmailVerification verification = emailVerificationRepository.findByUserAndOtpAndUsedFalse(user, request.getOtp().trim())
+                    .orElseThrow(() -> new ValidationException("Invalid or expired OTP"));
+            if (verification.isExpired()) {
+                throw new ValidationException("OTP has expired. Please request a new one.");
+            }
         } else {
-            mobileVerificationService.verifyOtp(new VerifyMobileRequest(user.getMobileNumber(), request.getOtp()));
+            MobileVerification verification = mobileVerificationRepository.findByUserAndOtpAndUsedFalse(user, request.getOtp().trim())
+                    .orElseThrow(() -> new ValidationException("Invalid or expired mobile OTP"));
+            if (verification.isExpired()) {
+                throw new ValidationException("Mobile OTP expired. Please request a new one.");
+            }
         }
     }
 
@@ -238,7 +251,14 @@ public class AuthServiceImpl implements AuthService {
             throw new ResourceNotFoundException("Account not found");
         }
 
-        // Update password
+        // 1. Verify and consume the OTP
+        if (input.contains("@")) {
+            emailVerificationService.verifyEmail(new VerifyEmailRequest(user.getEmail(), request.getOtp()));
+        } else {
+            mobileVerificationService.verifyOtp(new VerifyMobileRequest(user.getMobileNumber(), request.getOtp()));
+        }
+
+        // 2. Update password securely
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }

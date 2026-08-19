@@ -33,8 +33,8 @@ public class OpenAITranslationProvider implements TranslationProviderStrategy {
         SupportedLanguage srcLangEnum = SupportedLanguage.fromCode(request.getSourceLanguage());
         SupportedLanguage tgtLangEnum = SupportedLanguage.fromCode(request.getTargetLanguage());
 
-        String srcLangName = srcLangEnum.getDisplayName();
-        String tgtLangName = tgtLangEnum.getDisplayName();
+        String srcLangName = srcLangEnum != null ? srcLangEnum.getDisplayName() : "auto-detected language";
+        String tgtLangName = tgtLangEnum != null ? tgtLangEnum.getDisplayName() : request.getTargetLanguage();
 
         log.info("Executing OpenAI Translation [{}] -> [{}] for text length: {}",
                 srcLangName, tgtLangName, cleanText.length());

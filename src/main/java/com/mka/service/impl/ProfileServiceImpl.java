@@ -5,8 +5,11 @@ import com.mka.dto.request.UpdateProfileRequest;
 import com.mka.dto.response.ProfileResponse;
 import com.mka.entity.Profile;
 import com.mka.entity.User;
+import com.mka.enums.LanguageCode;
 import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.ResourceNotFoundException;
+import com.mka.exception.UnauthorizedException;
+import com.mka.exception.ValidationException;
 import com.mka.mapper.ProfileMapper;
 import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
@@ -23,11 +26,30 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserRepository userRepository;
     private final ProfileMapper profileMapper;
 
+    private String validateAndFormatLanguage(String lang) {
+        if (lang == null || lang.isBlank()) {
+            return "EN";
+        }
+        String cleanLang = lang.trim().toUpperCase();
+        try {
+            LanguageCode.valueOf(cleanLang);
+            return cleanLang;
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Unsupported language code: " + lang);
+        }
+    }
+
     @Override
     @Transactional
     public ProfileResponse createProfile(Long userId, CreateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getActive()) || Boolean.TRUE.equals(user.getDeleted())) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
+
+        String validLang = validateAndFormatLanguage(request.getPreferredLanguage());
 
         // If profile already exists, update details instead of throwing 409 Conflict
         java.util.Optional<Profile> existingProfileOpt = profileRepository.findByUser(user);
@@ -45,9 +67,7 @@ public class ProfileServiceImpl implements ProfileService {
             if (request.getAvatar() != null && !request.getAvatar().isBlank()) {
                 profile.setAvatar(request.getAvatar().trim());
             }
-            if (request.getPreferredLanguage() != null && !request.getPreferredLanguage().isBlank()) {
-                profile.setPreferredLanguage(request.getPreferredLanguage().trim());
-            }
+            profile.setPreferredLanguage(validLang);
 
             Profile savedProfile = profileRepository.save(profile);
             return profileMapper.toResponse(savedProfile);
@@ -58,6 +78,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         Profile profile = profileMapper.toEntity(request, user);
+        profile.setPreferredLanguage(validLang);
         Profile savedProfile = profileRepository.save(profile);
         return profileMapper.toResponse(savedProfile);
     }
@@ -67,6 +88,10 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getActive()) || Boolean.TRUE.equals(user.getDeleted())) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
 
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseGet(() -> profileRepository.save(
@@ -85,6 +110,11 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse getProfileByUsername(String username) {
         Profile profile = profileRepository.findByUsername(username.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found with username: " + username));
+
+        if (profile.getUser() != null && (!Boolean.TRUE.equals(profile.getUser().getActive()) || Boolean.TRUE.equals(profile.getUser().getDeleted()))) {
+            throw new ResourceNotFoundException("Profile not found with username: " + username);
+        }
+
         return profileMapper.toResponse(profile);
     }
 
@@ -93,6 +123,10 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getActive()) || Boolean.TRUE.equals(user.getDeleted())) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
 
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseGet(() -> profileRepository.save(
@@ -117,7 +151,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         if (request.getPreferredLanguage() != null && !request.getPreferredLanguage().isBlank()) {
-            profile.setPreferredLanguage(request.getPreferredLanguage().trim());
+            profile.setPreferredLanguage(validateAndFormatLanguage(request.getPreferredLanguage()));
         }
 
         if (request.getBio() != null) {
@@ -133,6 +167,10 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse updateAvatar(Long userId, String avatar) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getActive()) || Boolean.TRUE.equals(user.getDeleted())) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
 
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseGet(() -> profileRepository.save(
@@ -153,22 +191,31 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
+        if (!Boolean.TRUE.equals(user.getActive()) || Boolean.TRUE.equals(user.getDeleted())) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
+
+        String validLang = validateAndFormatLanguage(language);
+
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseGet(() -> profileRepository.save(
                         Profile.builder()
                                 .user(user)
                                 .username("user_" + user.getId())
                                 .avatar("avatar_default")
-                                .preferredLanguage(language)
+                                .preferredLanguage(validLang)
                                 .build()
                 ));
-        profile.setPreferredLanguage(language);
+        profile.setPreferredLanguage(validLang);
         return profileMapper.toResponse(profileRepository.save(profile));
     }
 
     @Override
     @Transactional
     public void deleteProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
         profileRepository.delete(profile);

@@ -31,8 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +72,7 @@ public class PostServiceImpl implements PostService {
         String preferredLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
         String handle = profile != null && profile.getUsername() != null ? profile.getUsername() : (user.getEmail() != null ? user.getEmail().split("@")[0] : "user_" + user.getId());
 
-        String originalLang = preferredLang != null && !preferredLang.isBlank() ? preferredLang : "EN";
+        String originalLang = detectTextLanguage(request.getContent(), request.getOriginalLanguage(), preferredLang);
 
         StringBuilder fullPostTextBuilder = new StringBuilder();
         if (request.getTitle() != null && !request.getTitle().isBlank()) {
@@ -126,7 +131,72 @@ public class PostServiceImpl implements PostService {
             posts = postRepository.findByStatus(PostStatus.ACTIVE, pageable);
         }
 
-        return posts.map(p -> mapPostToResponse(p, user, userLang));
+        if (posts.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<Long> postIds = posts.getContent().stream().map(Post::getId).toList();
+        List<Long> authorUserIds = posts.getContent().stream()
+                .filter(p -> p.getUser() != null && p.getUser().getId() != null)
+                .map(p -> p.getUser().getId())
+                .distinct()
+                .toList();
+
+        // 1. Batch profiles for post authors
+        Map<Long, Profile> profileByUserIdMap = authorUserIds.isEmpty()
+                ? Collections.emptyMap()
+                : profileRepository.findByUserIdIn(authorUserIds).stream()
+                .filter(p -> p.getUser() != null && p.getUser().getId() != null)
+                .collect(Collectors.toMap(p -> p.getUser().getId(), p -> p, (p1, p2) -> p1));
+
+        // 2. Batch reaction counts per post
+        List<PostReactionRepository.PostReactionCountProjection> reactionCountProjections =
+                postReactionRepository.findReactionCountsByPostIdIn(postIds);
+        Map<Long, Map<ReactionType, Long>> reactionCountsByPostIdMap = new HashMap<>();
+        for (PostReactionRepository.PostReactionCountProjection proj : reactionCountProjections) {
+            if (proj.getPostId() != null && proj.getReactionType() != null && proj.getCount() != null && proj.getCount() > 0) {
+                reactionCountsByPostIdMap
+                        .computeIfAbsent(proj.getPostId(), k -> new EnumMap<>(ReactionType.class))
+                        .put(proj.getReactionType(), proj.getCount());
+            }
+        }
+
+        // 3. Batch user-specific reactions, likes, and saved posts (only if user != null)
+        Map<Long, ReactionType> userReactionByPostIdMap = Collections.emptyMap();
+        Set<Long> likedPostIdsSet = Collections.emptySet();
+        Set<Long> savedPostIdsSet = Collections.emptySet();
+
+        if (user != null) {
+            List<com.mka.entity.PostReaction> userReactions = postReactionRepository.findByUserIdAndPostIdIn(user.getId(), postIds);
+            userReactionByPostIdMap = userReactions.stream()
+                    .filter(r -> r.getPost() != null && r.getPost().getId() != null && r.getReactionType() != null)
+                    .collect(Collectors.toMap(r -> r.getPost().getId(), com.mka.entity.PostReaction::getReactionType, (r1, r2) -> r1));
+
+            List<Long> likedPostIds = postLikeRepository.findLikedPostIdsByUserIdAndPostIdIn(user.getId(), postIds);
+            likedPostIdsSet = new HashSet<>(likedPostIds);
+
+            List<Long> savedPostIds = savedPostRepository.findSavedPostIdsByUserIdAndPostIdIn(user.getId(), postIds);
+            savedPostIdsSet = new HashSet<>(savedPostIds);
+        }
+
+        final User currentUser = user;
+        final String targetLanguage = userLang;
+        final Map<Long, Profile> finalProfiles = profileByUserIdMap;
+        final Map<Long, Map<ReactionType, Long>> finalReactionCounts = reactionCountsByPostIdMap;
+        final Map<Long, ReactionType> finalUserReactions = userReactionByPostIdMap;
+        final Set<Long> finalLikedPosts = likedPostIdsSet;
+        final Set<Long> finalSavedPosts = savedPostIdsSet;
+
+        return posts.map(p -> mapPostToResponseBatch(
+                p,
+                currentUser,
+                targetLanguage,
+                finalProfiles.get(p.getUser() != null ? p.getUser().getId() : null),
+                finalReactionCounts.getOrDefault(p.getId(), Collections.emptyMap()),
+                finalUserReactions.get(p.getId()),
+                finalLikedPosts.contains(p.getId()),
+                finalSavedPosts.contains(p.getId())
+        ));
     }
 
     @Override
@@ -278,5 +348,107 @@ public class PostServiceImpl implements PostService {
                 .isSavedByCurrentUser(isSaved)
                 .createdAt(post.getCreatedAt())
                 .build();
+    }
+
+    private PostResponse mapPostToResponseBatch(
+            Post post,
+            User currentUser,
+            String targetLanguage,
+            Profile authorProfile,
+            Map<ReactionType, Long> reactionCounts,
+            ReactionType userReaction,
+            boolean isLiked,
+            boolean isSaved
+    ) {
+        String translated = post.getOriginalContent();
+        String translatedTitle = post.getTitle();
+
+        if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
+            try {
+                if (translationService != null && post.getOriginalContent() != null && !post.getOriginalContent().isBlank()) {
+                    TranslationResponse response = translationService.translate(
+                            post.getOriginalContent(),
+                            post.getOriginalLanguage(),
+                            targetLanguage
+                    );
+                    if (response != null && response.getTranslatedText() != null) {
+                        translated = response.getTranslatedText();
+                    }
+                }
+            } catch (Throwable ex) {
+                log.warn("Post content translation skipped/failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+            }
+
+            if (post.getTitle() != null && !post.getTitle().isBlank()) {
+                try {
+                    if (translationService != null) {
+                        TranslationResponse titleResp = translationService.translate(
+                                post.getTitle(),
+                                post.getOriginalLanguage(),
+                                targetLanguage
+                        );
+                        if (titleResp != null && titleResp.getTranslatedText() != null) {
+                            translatedTitle = titleResp.getTranslatedText();
+                        }
+                    }
+                } catch (Throwable ex) {
+                    log.warn("Post title translation skipped/failed [Post ID: {}]: {}", post.getId(), ex.getMessage());
+                }
+            }
+        }
+
+        String handle = authorProfile != null && authorProfile.getUsername() != null
+                ? authorProfile.getUsername()
+                : (post.getUsername() != null && !post.getUsername().contains(" ") ? post.getUsername() : (post.getUser() != null && post.getUser().getEmail() != null ? post.getUser().getEmail().split("@")[0] : "anonymous"));
+
+        return PostResponse.builder()
+                .id(post.getId())
+                .postId(post.getFormattedPostId())
+                .authorId(post.getUser() != null ? post.getUser().getId() : null)
+                .username(handle)
+                .title(post.getTitle())
+                .translatedTitle(translatedTitle)
+                .summary(post.getSummary())
+                .caption(post.getCaption())
+                .description(post.getDescription())
+                .authorAvatar(post.getAuthorAvatar())
+                .originalContent(post.getOriginalContent())
+                .translatedContent(translated)
+                .originalLanguage(post.getOriginalLanguage())
+                .displayLanguage(targetLanguage != null ? targetLanguage : post.getOriginalLanguage())
+                .topic(post.getTopic())
+                .type(post.getType())
+                .imageUrl(post.getImageUrl())
+                .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0L)
+                .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0L)
+                .reactionCounts(reactionCounts)
+                .userReaction(userReaction)
+                .isLikedByCurrentUser(isLiked)
+                .isSavedByCurrentUser(isSaved)
+                .createdAt(post.getCreatedAt())
+                .build();
+    }
+
+    private String detectTextLanguage(String text, String requestedLang, String fallbackLang) {
+        if (requestedLang != null && !requestedLang.isBlank() && !"auto".equalsIgnoreCase(requestedLang.trim())) {
+            return requestedLang.trim();
+        }
+        if (text == null || text.isBlank()) {
+            return fallbackLang != null ? fallbackLang : "EN";
+        }
+        if (text.matches(".*[\\u0900-\\u097F].*")) {
+            return (fallbackLang != null && ("MR".equalsIgnoreCase(fallbackLang) || "Marathi".equalsIgnoreCase(fallbackLang))) ? "MR" : "HI";
+        }
+        if (text.matches(".*[\\u0980-\\u09FF].*")) return "BN";
+        if (text.matches(".*[\\u0A00-\\u0A7F].*")) return "PA";
+        if (text.matches(".*[\\u0A80-\\u0AFF].*")) return "GU";
+        if (text.matches(".*[\\u0B00-\\u0B7F].*")) return "OR";
+        if (text.matches(".*[\\u0B80-\\u0BFF].*")) return "TA";
+        if (text.matches(".*[\\u0C00-\\u0C7F].*")) return "TE";
+        if (text.matches(".*[\\u0C80-\\u0CFF].*")) return "KN";
+        if (text.matches(".*[\\u0D00-\\u0D7F].*")) return "ML";
+        if (text.matches(".*[\\u0600-\\u06FF].*")) return "UR";
+
+        return fallbackLang != null ? fallbackLang : "EN";
     }
 }

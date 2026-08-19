@@ -48,11 +48,11 @@ public enum SupportedLanguage {
 
     /**
      * Resolves a language code string to a SupportedLanguage instance.
-     * Defaults to EN if unsupported or null.
+     * Returns null if unsupported, empty, or auto.
      */
     public static SupportedLanguage fromCode(String codeStr) {
-        if (codeStr == null || codeStr.trim().isEmpty()) {
-            return EN;
+        if (codeStr == null || codeStr.trim().isEmpty() || "auto".equalsIgnoreCase(codeStr.trim())) {
+            return null;
         }
         String cleanCode = codeStr.trim();
         for (SupportedLanguage lang : values()) {
@@ -63,6 +63,6 @@ public enum SupportedLanguage {
                 return lang;
             }
         }
-        return EN;
+        return null;
     }
 }

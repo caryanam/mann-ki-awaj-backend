@@ -13,7 +13,7 @@ public class UpdatePasswordRequest {
     private String oldPassword;
 
     @NotBlank(message = "New password is required")
-    @Size(min = 8, max = 20, message = "Password length must be between 8 and 20 characters")
+    @Size(min = 8, max = 30, message = "Password length must be between 8 and 30 characters")
     private String newPassword;
 
     public String getOldPassword() { return oldPassword; }

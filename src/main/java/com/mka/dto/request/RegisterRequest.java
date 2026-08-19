@@ -17,8 +17,9 @@ public class RegisterRequest {
     @Pattern(regexp = "^[A-Za-z ]+$", message = "Full name must contain only letters and spaces")
     private String fullName;
 
-    @Email(message = "Invalid email address")
     @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email address")
+    @Size(max = 254, message = "Email cannot exceed 254 characters")
     private String email;
 
     @NotBlank(message = "Mobile number is required")

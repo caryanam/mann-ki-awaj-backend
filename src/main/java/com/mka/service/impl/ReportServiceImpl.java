@@ -13,6 +13,7 @@ import com.mka.enums.ReportReason;
 import com.mka.enums.ReportStatus;
 import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.ResourceNotFoundException;
+import com.mka.exception.UnauthorizedException;
 import com.mka.repository.CommentRepository;
 import com.mka.repository.PostRepository;
 import com.mka.repository.ProfileRepository;
@@ -44,6 +45,10 @@ public class ReportServiceImpl implements ReportService {
         User reporter = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
+        if (!Boolean.TRUE.equals(reporter.getActive())) {
+            throw new UnauthorizedException("User account is inactive or deactivated");
+        }
+
         Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
@@ -69,6 +74,10 @@ public class ReportServiceImpl implements ReportService {
     public ReportResponse reportComment(String email, Long commentId, CreateReportRequest request) {
         User reporter = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        if (!Boolean.TRUE.equals(reporter.getActive())) {
+            throw new UnauthorizedException("User account is inactive or deactivated");
+        }
 
         Comment comment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
@@ -100,6 +109,10 @@ public class ReportServiceImpl implements ReportService {
     public Page<ReportResponse> getMyReports(String email, Pageable pageable) {
         User reporter = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        if (!Boolean.TRUE.equals(reporter.getActive())) {
+            throw new UnauthorizedException("User account is inactive or deactivated");
+        }
 
         return reportRepository.findByReporterIdOrderByCreatedAtDesc(reporter.getId(), pageable)
                 .map(this::mapToResponse);

@@ -348,6 +348,7 @@ public class OpenAIClientImpl implements OpenAIClient {
         };
 
         String whisperLangCode = mapToWhisperLanguageCode(language);
+        String whisperPrompt = mapToWhisperPrompt(language);
 
         org.springframework.util.MultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
         body.add("file", contentsAsResource);
@@ -356,6 +357,10 @@ public class OpenAIClientImpl implements OpenAIClient {
 
         if (whisperLangCode != null) {
             body.add("language", whisperLangCode);
+        }
+
+        if (whisperPrompt != null) {
+            body.add("prompt", whisperPrompt);
         }
 
         try {
@@ -410,6 +415,21 @@ public class OpenAIClientImpl implements OpenAIClient {
             case "marathi", "mr" -> "mr";
             case "hindi", "hi" -> "hi";
             case "english", "en" -> "en";
+            default -> null;
+        };
+    }
+
+    private String mapToWhisperPrompt(String inputLang) {
+        if (inputLang == null || inputLang.trim().isEmpty()) return null;
+        String lang = inputLang.trim().toLowerCase(Locale.ROOT);
+        return switch (lang) {
+            case "hindi", "hi" -> "\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948\u0964";
+            case "marathi", "mr" -> "\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948\u0964";
+            case "bengali", "bn" -> "\u09A8\u09AE\u09B8\u09CD\u0995\u09BE\u09B0, \u09AE\u09A8 \u0995\u09BF \u0986\u0993\u09AF\u09BC\u09BE\u099C\u09C7 \u0986\u09AA\u09A8\u09BE\u0995\u09C7 \u09B8\u09CD\u09AC\u09BE\u0997\u09A4\u09AE\u0964";
+            case "punjabi", "pa" -> "\u0A28\u0A2E\u0A38\u0A15\u0A3E\u0A30, \u0A2E\u0A28 \u0A15\u0A40 \u0A06\u0A35\u0A3E\u0A1C\u0A3C \u0A35\u0A3F\u0A71\u0A1A \u0A24\u0A41\u0A39\u0A3E\u0A21\u0A3E \u0A38\u0A35\u0A3E\u0A17\u0A24 \u0A39\u0A48\u0964";
+            case "bhojpuri", "bho" -> "\u0928\u092E\u0938\u094D\u0915\u093E\u0930, \u0930\u093E\u0909\u0930 \u092E\u0928 \u0915\u0940 \u0906\u0935\u093E\u091C \u092E\u0947\u0902 \u0938\u094D\u0935\u093E\u0917\u0924 \u092C\u093E\u0964";
+            case "telugu", "te" -> "\u0C28\u0C2E\u0C38\u0C4D\u0C15\u0C3E\u0C30\u0C02, \u0C2E\u0C28\u0C4D \u0C15\u0C40 \u0C06\u0C35\u0C3E\u0C1C\u0C4D";
+            case "gujarati", "gu" -> "\u0AA8\u0AAE\u0AB8\u0ACD\u0A24\u0A47, \u0AAE\u0AA8 \u0A95\u0A40 \u0A86\u0AB5\u0ABE\u0A9C\u0AAE\u0ABE\u0A82 \u0AA4\u0AAE\u0ABE\u0AB0\u0AC1\u0A82 \u0AB8\u0ACD\u0AB5\u0ABE\u0A97\u0AA4 \u0A9B\u0AC7\u0964";
             default -> null;
         };
     }

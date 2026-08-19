@@ -4,6 +4,7 @@ import com.mka.dto.request.SendWarningRequest;
 import com.mka.dto.response.*;
 import com.mka.entity.*;
 import com.mka.enums.*;
+import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.ResourceNotFoundException;
 import com.mka.repository.*;
 import com.mka.service.AdminService;
@@ -244,6 +245,9 @@ public class AdminServiceImpl implements AdminService {
     public void resolveReport(Long reportId) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found with ID: " + reportId));
+        if (report.getStatus() == ReportStatus.RESOLVED) {
+            throw new ResourceAlreadyExistsException("Report is already resolved");
+        }
         report.setStatus(ReportStatus.RESOLVED);
         reportRepository.save(report);
     }
@@ -253,6 +257,9 @@ public class AdminServiceImpl implements AdminService {
     public void rejectReport(Long reportId) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found with ID: " + reportId));
+        if (report.getStatus() == ReportStatus.REJECTED) {
+            throw new ResourceAlreadyExistsException("Report is already rejected");
+        }
         report.setStatus(ReportStatus.REJECTED);
         reportRepository.save(report);
     }

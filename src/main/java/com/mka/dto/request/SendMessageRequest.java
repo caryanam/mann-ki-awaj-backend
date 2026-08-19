@@ -2,6 +2,7 @@ package com.mka.dto.request;
 
 import com.mka.enums.MessageType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Data
@@ -14,6 +15,7 @@ public class SendMessageRequest {
     private Long recipientUserId;
 
     @NotBlank(message = "Message content cannot be empty")
+    @Size(max = 2000, message = "Message content cannot exceed 2000 characters")
     private String content;
 
     private MessageType messageType;

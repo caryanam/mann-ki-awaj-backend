@@ -5,6 +5,7 @@ import com.mka.enums.translation.SupportedLanguage;
 import com.mka.enums.translation.TranslationProvider;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +23,7 @@ import lombok.Setter;
 public class TranslationRequest {
 
     @NotBlank(message = "Text to translate cannot be empty")
+    @Size(max = 5000, message = "Text to translate cannot exceed 5000 characters")
     private String text;
 
     private SupportedLanguage sourceLanguage;

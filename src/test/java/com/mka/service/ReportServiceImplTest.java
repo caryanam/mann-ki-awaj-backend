@@ -58,7 +58,7 @@ class ReportServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.builder().id(1L).email("reporter@example.com").role(Role.USER).build();
+        testUser = User.builder().id(1L).email("reporter@example.com").active(true).role(Role.USER).build();
         testPost = Post.builder().id(10L).user(testUser).status(PostStatus.ACTIVE).build();
     }
 
@@ -92,6 +92,46 @@ class ReportServiceImplTest {
     }
 
     @Test
+    void testReportPost_InactiveUser_ThrowsUnauthorizedException() {
+        User inactiveUser = User.builder().id(2L).email("inactive@example.com").active(false).role(Role.USER).build();
+        CreateReportRequest request = new CreateReportRequest();
+        request.setReason(ReportReason.SPAM);
+
+        when(userRepository.findByEmail("inactive@example.com")).thenReturn(Optional.of(inactiveUser));
+
+        assertThrows(com.mka.exception.UnauthorizedException.class, () ->
+                reportService.reportPost("inactive@example.com", 10L, request)
+        );
+    }
+
+    @Test
+    void testReportPost_DuplicateReport_ThrowsResourceAlreadyExistsException() {
+        CreateReportRequest request = new CreateReportRequest();
+        request.setReason(ReportReason.SPAM);
+
+        when(userRepository.findByEmail("reporter@example.com")).thenReturn(Optional.of(testUser));
+        when(postRepository.findByIdAndStatus(10L, PostStatus.ACTIVE)).thenReturn(Optional.of(testPost));
+        when(reportRepository.existsByReporterIdAndContentTypeAndContentId(1L, "POST", 10L)).thenReturn(true);
+
+        assertThrows(com.mka.exception.ResourceAlreadyExistsException.class, () ->
+                reportService.reportPost("reporter@example.com", 10L, request)
+        );
+    }
+
+    @Test
+    void testReportPost_PostNotFound_ThrowsResourceNotFoundException() {
+        CreateReportRequest request = new CreateReportRequest();
+        request.setReason(ReportReason.SPAM);
+
+        when(userRepository.findByEmail("reporter@example.com")).thenReturn(Optional.of(testUser));
+        when(postRepository.findByIdAndStatus(99L, PostStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        assertThrows(com.mka.exception.ResourceNotFoundException.class, () ->
+                reportService.reportPost("reporter@example.com", 99L, request)
+        );
+    }
+
+    @Test
     void testGetMyReports_Success() {
         Pageable pageable = PageRequest.of(0, 10);
         Report report = Report.builder()
@@ -112,5 +152,17 @@ class ReportServiceImplTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void testGetMyReports_InactiveUser_ThrowsUnauthorizedException() {
+        User inactiveUser = User.builder().id(2L).email("inactive@example.com").active(false).role(Role.USER).build();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(userRepository.findByEmail("inactive@example.com")).thenReturn(Optional.of(inactiveUser));
+
+        assertThrows(com.mka.exception.UnauthorizedException.class, () ->
+                reportService.getMyReports("inactive@example.com", pageable)
+        );
     }
 }

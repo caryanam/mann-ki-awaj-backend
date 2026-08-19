@@ -142,4 +142,47 @@ class AdminServiceImplTest {
         assertEquals(ReviewStatus.APPROVED, queueItem.getStatus());
         verify(reviewQueueRepository).save(queueItem);
     }
+
+    @Test
+    void testResolveReport_Success() {
+        com.mka.entity.Report report = com.mka.entity.Report.builder()
+                .id(50L)
+                .status(ReportStatus.PENDING)
+                .build();
+
+        when(reportRepository.findById(50L)).thenReturn(Optional.of(report));
+
+        adminService.resolveReport(50L);
+
+        assertEquals(ReportStatus.RESOLVED, report.getStatus());
+        verify(reportRepository).save(report);
+    }
+
+    @Test
+    void testResolveReport_AlreadyResolved_ThrowsResourceAlreadyExistsException() {
+        com.mka.entity.Report report = com.mka.entity.Report.builder()
+                .id(50L)
+                .status(ReportStatus.RESOLVED)
+                .build();
+
+        when(reportRepository.findById(50L)).thenReturn(Optional.of(report));
+
+        assertThrows(com.mka.exception.ResourceAlreadyExistsException.class, () ->
+                adminService.resolveReport(50L)
+        );
+    }
+
+    @Test
+    void testRejectReport_AlreadyRejected_ThrowsResourceAlreadyExistsException() {
+        com.mka.entity.Report report = com.mka.entity.Report.builder()
+                .id(50L)
+                .status(ReportStatus.REJECTED)
+                .build();
+
+        when(reportRepository.findById(50L)).thenReturn(Optional.of(report));
+
+        assertThrows(com.mka.exception.ResourceAlreadyExistsException.class, () ->
+                adminService.rejectReport(50L)
+        );
+    }
 }

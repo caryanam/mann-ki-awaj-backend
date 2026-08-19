@@ -184,6 +184,12 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
 
+        boolean isParticipant = (room.getParticipant1() != null && room.getParticipant1().getId().equals(currentUser.getId()))
+                || (room.getParticipant2() != null && room.getParticipant2().getId().equals(currentUser.getId()));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("User is not a participant in this chat room.");
+        }
+
         if ("ACCEPTED".equalsIgnoreCase(room.getRequestStatus())) {
             return mapRoomToResponse(room, currentUser);
         }
@@ -216,6 +222,12 @@ public class ChatServiceImpl implements ChatService {
         }
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        boolean isParticipant = (room.getParticipant1() != null && room.getParticipant1().getId().equals(currentUser.getId()))
+                || (room.getParticipant2() != null && room.getParticipant2().getId().equals(currentUser.getId()));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("User is not a participant in this chat room.");
+        }
 
         if (room.getRequestSenderId() != null && room.getRequestSenderId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Sender cannot reject their own request.");

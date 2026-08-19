@@ -9,6 +9,7 @@ public class CreateCommentRequest {
     @Size(max = 500, message = "Comment content cannot exceed 500 characters")
     private String content;
 
+    @Size(max = 10, message = "Original language code cannot exceed 10 characters")
     private String originalLanguage;
 
     public CreateCommentRequest() {}

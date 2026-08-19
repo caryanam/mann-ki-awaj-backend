@@ -121,4 +121,23 @@ class OpenAITranslationProviderTest {
         assertEquals(expectedOutput, response.getTranslatedText());
         assertTrue(response.getTranslatedText().contains("@quietchapter"));
     }
+
+    @Test
+    void testTranslate_autoSourceLanguage_usesAutoDetectedLanguageName() {
+        when(openAIClient.translateText(eq("माझे विचार"), eq("auto-detected language"), eq("English"), eq("gpt-4o-mini")))
+                .thenReturn("My thoughts");
+
+        TranslationRequest request = TranslationRequest.builder()
+                .text("माझे विचार")
+                .sourceLanguage("auto")
+                .targetLanguage("EN")
+                .build();
+
+        TranslationResponse response = provider.translate(request);
+
+        assertNotNull(response);
+        assertEquals("My thoughts", response.getTranslatedText());
+
+        verify(openAIClient, times(1)).translateText("माझे विचार", "auto-detected language", "English", "gpt-4o-mini");
+    }
 }
