@@ -50,6 +50,9 @@ class SocketIOHandlerTest {
     private ChatRoomRepository chatRoomRepository;
 
     @Mock
+    private com.mka.repository.ProfileRepository profileRepository;
+
+    @Mock
     private SocketIOClient client;
 
     @Mock
@@ -79,7 +82,7 @@ class SocketIOHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new SocketIOHandler(server, presenceManager, jwtService, userDetailsService, userRepository, chatRoomRepository);
+        handler = new SocketIOHandler(server, presenceManager, jwtService, userDetailsService, userRepository, chatRoomRepository, profileRepository);
 
         verify(server).addConnectListener(connectListenerCaptor.capture());
         verify(server).addDisconnectListener(disconnectListenerCaptor.capture());
