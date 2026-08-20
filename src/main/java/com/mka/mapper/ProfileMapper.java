@@ -26,6 +26,14 @@ public class ProfileMapper {
         if (entity == null) {
             return null;
         }
+
+        Long daysLeft = 0L;
+        if (entity.getUsernameChangeCount() != null && entity.getUsernameChangeCount() >= 1 && entity.getUsernameLastChangedAt() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            long daysPassed = java.time.Duration.between(entity.getUsernameLastChangedAt(), now).toDays();
+            daysLeft = Math.max(0L, 14L - daysPassed);
+        }
+
         return ProfileResponse.builder()
                 .id(entity.getId())
                 .userId(entity.getUser() != null ? entity.getUser().getId() : null)
@@ -35,6 +43,9 @@ public class ProfileMapper {
                 .bio(entity.getBio())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .usernameChangeCount(entity.getUsernameChangeCount() != null ? entity.getUsernameChangeCount() : 0)
+                .usernameLastChangedAt(entity.getUsernameLastChangedAt())
+                .daysLeftForChange(daysLeft)
                 .build();
     }
 }

@@ -460,4 +460,68 @@ public class OpenAIClientImpl implements OpenAIClient {
         if (!res.isSuccessful()) return "SAFE";
         return res.isFlagged() ? "UNSAFE: " + res.getReason() : "SAFE";
     }
+
+    @Override
+    public com.mka.dto.response.UsernameAiCheckResult validateUsernameWithAi(String username, String userFullName) {
+        if (!isConfigured()) {
+            log.info("AI_USERNAME_CHECK: OpenAI not configured; proceeding with local dictionary validation.");
+            return com.mka.dto.response.UsernameAiCheckResult.approved();
+        }
+
+        try {
+            String systemPrompt = """
+                You are an Anonymity & Safety AI Auditor for the anonymous social platform "Man Ki Aavaj".
+                Your task is to analyze a requested username handle and determine if it contains ANY real human name (first name, last name, full name, nickname, or embedded variation in ANY language/spelling like "Pratik", "Prajwal", "Raju", "Sharma", "John", "Devina", etc.) OR tokens from the user's real name.
+
+                CRITICAL RULES:
+                1. Superhero, anime, mythological, fictional, and creative handles (e.g. "captainamerica", "marvel", "cyberninja", "starwatcher", "ironman", "batman", "spiderman", "cosmicvoyager", "matrix", "phantom") ARE FULLY ALLOWED.
+                2. Real human names or embedded names (e.g. "meranaampratik", "pratik123", "prajwalguy", "rahulsharma", "devinagirl") MUST BE REJECTED.
+                3. User's registered real name tokens (e.g., if user's real name is "Pratik", handles containing "pratik") MUST BE REJECTED.
+                4. Abusive/profane words MUST BE REJECTED.
+
+                Return JSON ONLY:
+                {
+                  "allowed": true | false,
+                  "reason": "Clear user-facing error explanation if rejected, or null if approved"
+                }
+                """;
+
+            String userContent = "Requested Username Handle: @" + username + "\nUser's Registered Real Full Name: " + (userFullName != null ? userFullName : "Not Provided");
+
+            Map<String, Object> requestBody = Map.of(
+                    "model", properties.getTranslationModel() != null ? properties.getTranslationModel() : "gpt-4o-mini",
+                    "messages", List.of(
+                            Map.of("role", "system", "content", systemPrompt),
+                            Map.of("role", "user", "content", userContent)
+                    ),
+                    "temperature", 0.1,
+                    "response_format", Map.of("type", "json_object")
+            );
+
+            String responseJson = restClient.post()
+                    .uri("/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
+            if (responseJson != null && responseJson.contains("\"allowed\"")) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(responseJson);
+                com.fasterxml.jackson.databind.JsonNode choices = root.get("choices");
+                if (choices != null && choices.isArray() && choices.size() > 0) {
+                    String contentStr = choices.get(0).get("message").get("content").asText();
+                    com.fasterxml.jackson.databind.JsonNode resultNode = mapper.readTree(contentStr);
+                    boolean allowed = resultNode.path("allowed").asBoolean(true);
+                    String reason = resultNode.path("reason").asText(null);
+                    return new com.mka.dto.response.UsernameAiCheckResult(allowed, reason);
+                }
+            }
+
+            return com.mka.dto.response.UsernameAiCheckResult.approved();
+        } catch (Exception ex) {
+            log.warn("AI_USERNAME_CHECK_WARN: OpenAI request failed ({}); falling back to local dictionary check.", ex.getMessage());
+            return com.mka.dto.response.UsernameAiCheckResult.approved();
+        }
+    }
 }

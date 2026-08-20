@@ -19,6 +19,7 @@ public class SocketIOHandler {
     private final CustomUserDetailsService userDetailsService;
     private final UserRepository userRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final com.mka.repository.ProfileRepository profileRepository;
 
     public SocketIOHandler(
             SocketIOServer server,
@@ -26,13 +27,15 @@ public class SocketIOHandler {
             JwtService jwtService,
             CustomUserDetailsService userDetailsService,
             UserRepository userRepository,
-            ChatRoomRepository chatRoomRepository) {
+            ChatRoomRepository chatRoomRepository,
+            com.mka.repository.ProfileRepository profileRepository) {
 
         this.presenceManager = presenceManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
         this.chatRoomRepository = chatRoomRepository;
+        this.profileRepository = profileRepository;
 
         server.addConnectListener(client -> {
             String token = extractToken(client);
@@ -44,9 +47,16 @@ public class SocketIOHandler {
                         if (jwtService.validateToken(token, userDetails)) {
                             User user = userRepository.findByEmail(username).orElse(null);
                             if (user != null && Boolean.TRUE.equals(user.getActive())) {
+                                String userHandle = profileRepository.findByUser(user)
+                                        .map(p -> p.getUsername())
+                                        .orElse(user.getEmail() != null ? user.getEmail().split("@")[0] : "user_" + user.getId());
+
                                 client.set("authenticatedUserId", user.getId());
                                 client.set("authenticatedUserEmail", user.getEmail());
-                                log.info("Socket client {} authenticated successfully for user ID {}", client.getSessionId(), user.getId());
+                                client.set("authenticatedUserHandle", userHandle);
+
+                                presenceManager.registerSession(user.getId(), userHandle, client.getSessionId());
+                                log.info("Socket client {} authenticated successfully for user ID {} ({})", client.getSessionId(), user.getId(), userHandle);
                                 return;
                             }
                         }
@@ -127,7 +137,8 @@ public class SocketIOHandler {
             client.joinRoom(roomName);
             client.set("userId", String.valueOf(authUserId));
             try {
-                presenceManager.registerSession(authUserId, roomName, client.getSessionId());
+                String handle = getAuthUserHandle(client);
+                presenceManager.registerSession(authUserId, handle, client.getSessionId());
             } catch (Exception e) {
                 log.warn("Failed to register user presence room for user {}: {}", authUserId, e.getMessage());
             }
@@ -144,12 +155,20 @@ public class SocketIOHandler {
 
             try {
                 client.set("userId", String.valueOf(authUserId));
+                String handle = getAuthUserHandle(client);
                 presenceManager.touchHeartbeat(authUserId);
-                presenceManager.registerSession(authUserId, "user_" + authUserId, client.getSessionId());
+                presenceManager.registerSession(authUserId, handle, client.getSessionId());
             } catch (Exception e) {
                 log.warn("Error processing presence heartbeat for user {}: {}", authUserId, e.getMessage());
             }
         });
+    }
+
+    private String getAuthUserHandle(SocketIOClient client) {
+        if (client == null) return null;
+        Object val = client.get("authenticatedUserHandle");
+        if (val instanceof String) return (String) val;
+        return null;
     }
 
     private Long getAuthUserId(SocketIOClient client) {

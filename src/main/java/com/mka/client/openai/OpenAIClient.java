@@ -45,12 +45,12 @@ public interface OpenAIClient {
 
     /**
      * Official Multimodal Moderation using OpenAI /v1/moderations endpoint with omni-moderation-latest.
-     * Evaluates text, image, or text + image inputs together.
-     *
-     * @param text Post text content (optional/nullable)
-     * @param imageBytes Post image bytes (optional/nullable)
-     * @param imageMimeType Image MIME type (e.g. image/jpeg, image/png)
-     * @return ModerationResult with fail-closed status, flagged boolean, and category scores.
      */
     ModerationResult moderateMultimodal(String text, byte[] imageBytes, String imageMimeType);
+
+    /**
+     * AI-Powered Username Anonymity & Safety Verification.
+     * Evaluates requested handle for embedded real human names, user's real name tokens, or inappropriate terms using LLM reasoning.
+     */
+    com.mka.dto.response.UsernameAiCheckResult validateUsernameWithAi(String username, String userFullName);
 }

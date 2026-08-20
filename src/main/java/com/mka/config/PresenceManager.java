@@ -125,9 +125,12 @@ public class PresenceManager {
     public void broadcastPresenceChange(Long userId, String username, String status, LocalDateTime lastSeen) {
         if (socketIOServer == null || userId == null) return;
 
+        String handle = userNames.getOrDefault(userId, username);
+
         Map<String, Object> payload = new HashMap<>();
         payload.put("userId", userId);
-        payload.put("username", username);
+        payload.put("username", handle);
+        payload.put("userHandle", handle);
         payload.put("status", status);
         payload.put("isOnline", "ONLINE".equalsIgnoreCase(status));
         payload.put("lastSeen", lastSeen != null ? lastSeen.toString() : null);

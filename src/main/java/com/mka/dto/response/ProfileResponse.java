@@ -23,4 +23,7 @@ public class ProfileResponse {
     private Boolean isOnline;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer usernameChangeCount;
+    private LocalDateTime usernameLastChangedAt;
+    private Long daysLeftForChange;
 }

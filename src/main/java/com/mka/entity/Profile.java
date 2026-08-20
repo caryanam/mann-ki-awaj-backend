@@ -38,4 +38,11 @@ public class Profile extends BaseEntity {
 
     @Column(name = "last_seen")
     private java.time.LocalDateTime lastSeen;
+
+    @Column(name = "username_change_count")
+    @Builder.Default
+    private Integer usernameChangeCount = 0;
+
+    @Column(name = "username_last_changed_at")
+    private java.time.LocalDateTime usernameLastChangedAt;
 }

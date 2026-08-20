@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mka.util.UsernameValidationUtil;
+
 @Service
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService {
@@ -25,6 +27,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
     private final ProfileMapper profileMapper;
+    private final com.mka.client.openai.OpenAIClient openAIClient;
 
     private String validateAndFormatLanguage(String lang) {
         if (lang == null || lang.isBlank()) {
@@ -39,6 +42,19 @@ public class ProfileServiceImpl implements ProfileService {
         }
     }
 
+    private void validateUsernameHandle(String requestedUsername, User user) {
+        // 1. Fast local dictionary & user full name token validation
+        UsernameValidationUtil.validateUsername(requestedUsername, user != null ? user.getFullName() : null);
+
+        // 2. Deep LLM AI Anonymity & Real-Name Audit
+        if (openAIClient != null && openAIClient.isConfigured()) {
+            com.mka.dto.response.UsernameAiCheckResult aiRes = openAIClient.validateUsernameWithAi(requestedUsername, user != null ? user.getFullName() : null);
+            if (aiRes != null && !aiRes.isAllowed()) {
+                throw new ValidationException(aiRes.getReason() != null ? aiRes.getReason() : "Username handle contains a real human name. Please choose a fictional or creative handle like 'captainamerica'.");
+            }
+        }
+    }
+
     @Override
     @Transactional
     public ProfileResponse createProfile(Long userId, CreateProfileRequest request) {
@@ -50,16 +66,20 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         String validLang = validateAndFormatLanguage(request.getPreferredLanguage());
+        String requestedUsername = request.getUsername().trim();
+
+        validateUsernameHandle(requestedUsername, user);
 
         // If profile already exists, update details instead of throwing 409 Conflict
         java.util.Optional<Profile> existingProfileOpt = profileRepository.findByUser(user);
         if (existingProfileOpt.isPresent()) {
             Profile profile = existingProfileOpt.get();
-            String requestedUsername = request.getUsername().trim();
 
             if (profileRepository.existsByUsername(requestedUsername) && 
                 !profile.getUsername().equalsIgnoreCase(requestedUsername)) {
-                throw new ResourceAlreadyExistsException("Username handle @" + request.getUsername() + " is already taken");
+                java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(requestedUsername, profileRepository);
+                String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
+                throw new ResourceAlreadyExistsException("Username handle @" + requestedUsername + " is already taken." + suggestionsStr);
             }
 
             profile.setUsername(requestedUsername);
@@ -73,12 +93,15 @@ public class ProfileServiceImpl implements ProfileService {
             return profileMapper.toResponse(savedProfile);
         }
 
-        if (profileRepository.existsByUsername(request.getUsername().trim())) {
-            throw new ResourceAlreadyExistsException("Username handle @" + request.getUsername() + " is already taken");
+        if (profileRepository.existsByUsername(requestedUsername)) {
+            java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(requestedUsername, profileRepository);
+            String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
+            throw new ResourceAlreadyExistsException("Username handle @" + requestedUsername + " is already taken." + suggestionsStr);
         }
 
         Profile profile = profileMapper.toEntity(request, user);
         profile.setPreferredLanguage(validLang);
+        profile.setUsernameChangeCount(0);
         Profile savedProfile = profileRepository.save(profile);
         return profileMapper.toResponse(savedProfile);
     }
@@ -140,10 +163,32 @@ public class ProfileServiceImpl implements ProfileService {
 
         if (request.getUsername() != null && !request.getUsername().isBlank()) {
             String newUsername = request.getUsername().trim();
-            if (!newUsername.equalsIgnoreCase(profile.getUsername()) && profileRepository.existsByUsername(newUsername)) {
-                throw new ResourceAlreadyExistsException("Username handle @" + newUsername + " is already taken");
+
+            if (!newUsername.equalsIgnoreCase(profile.getUsername())) {
+                // 1. Validate real human names & abusive words (Local + AI Audit)
+                validateUsernameHandle(newUsername, user);
+
+                // 2. Enforce 14-Day Cooldown (1st change from profile is free, subsequent edits require 14 days wait)
+                if (profile.getUsernameChangeCount() != null && profile.getUsernameChangeCount() >= 1 && profile.getUsernameLastChangedAt() != null) {
+                    java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                    long daysPassed = java.time.Duration.between(profile.getUsernameLastChangedAt(), now).toDays();
+                    if (daysPassed < 14) {
+                        long daysLeft = 14 - daysPassed;
+                        throw new ValidationException("Anonymous handle can only be updated once every 14 days. You can change it again in " + daysLeft + " days.");
+                    }
+                }
+
+                // 3. Check availability & generate suggestions
+                if (profileRepository.existsByUsername(newUsername)) {
+                    java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(newUsername, profileRepository);
+                    String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
+                    throw new ResourceAlreadyExistsException("Username handle @" + newUsername + " is already taken." + suggestionsStr);
+                }
+
+                profile.setUsername(newUsername);
+                profile.setUsernameChangeCount((profile.getUsernameChangeCount() == null ? 0 : profile.getUsernameChangeCount()) + 1);
+                profile.setUsernameLastChangedAt(java.time.LocalDateTime.now());
             }
-            profile.setUsername(newUsername);
         }
 
         if (request.getAvatar() != null && !request.getAvatar().isBlank()) {
