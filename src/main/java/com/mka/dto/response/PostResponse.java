@@ -34,6 +34,10 @@ public class PostResponse {
     private PostTopic topic;
     private PostType type;
     private String imageUrl;
+    private String movieName;
+    private Integer movieRating;
+    private Boolean isSpoiler;
+    private String mood;
     private long likeCount;
     private long commentCount;
     private Map<ReactionType, Long> reactionCounts;

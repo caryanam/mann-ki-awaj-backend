@@ -54,6 +54,16 @@ public class Post {
     @Column(length = 255)
     private String imageUrl;
 
+    @Column(length = 150)
+    private String movieName;
+
+    private Integer movieRating;
+
+    private Boolean isSpoiler = false;
+
+    @Column(length = 50)
+    private String mood;
+
     @Column(nullable = false)
     private Long likeCount = 0L;
 
@@ -145,6 +155,18 @@ public class Post {
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
+    public String getMovieName() { return movieName; }
+    public void setMovieName(String movieName) { this.movieName = movieName; }
+
+    public Integer getMovieRating() { return movieRating; }
+    public void setMovieRating(Integer movieRating) { this.movieRating = movieRating; }
+
+    public Boolean getIsSpoiler() { return isSpoiler != null ? isSpoiler : false; }
+    public void setIsSpoiler(Boolean isSpoiler) { this.isSpoiler = isSpoiler; }
+
+    public String getMood() { return mood; }
+    public void setMood(String mood) { this.mood = mood; }
+
     public Long getLikeCount() { return likeCount; }
     public void setLikeCount(Long likeCount) { this.likeCount = likeCount; }
 
@@ -176,6 +198,10 @@ public class Post {
         private PostTopic topic = PostTopic.GENERAL;
         private PostType type = PostType.TEXT;
         private String imageUrl;
+        private String movieName;
+        private Integer movieRating;
+        private Boolean isSpoiler = false;
+        private String mood;
         private Long likeCount = 0L;
         private Long commentCount = 0L;
         private PostStatus status = PostStatus.ACTIVE;
@@ -195,6 +221,10 @@ public class Post {
         public PostBuilder topic(PostTopic topic) { this.topic = topic; return this; }
         public PostBuilder type(PostType type) { this.type = type; return this; }
         public PostBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
+        public PostBuilder movieName(String movieName) { this.movieName = movieName; return this; }
+        public PostBuilder movieRating(Integer movieRating) { this.movieRating = movieRating; return this; }
+        public PostBuilder isSpoiler(Boolean isSpoiler) { this.isSpoiler = isSpoiler; return this; }
+        public PostBuilder mood(String mood) { this.mood = mood; return this; }
         public PostBuilder likeCount(Long likeCount) { this.likeCount = likeCount; return this; }
         public PostBuilder commentCount(Long commentCount) { this.commentCount = commentCount; return this; }
         public PostBuilder status(PostStatus status) { this.status = status; return this; }
@@ -202,7 +232,30 @@ public class Post {
         public PostBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Post build() {
-            return new Post(id, user, username, title, summary, caption, description, authorAvatar, originalContent, originalLanguage, topic, type, imageUrl, likeCount, commentCount, status, createdAt, updatedAt);
+            Post post = new Post();
+            post.setId(id);
+            post.setUser(user);
+            post.setUsername(username);
+            post.setTitle(title);
+            post.setSummary(summary);
+            post.setCaption(caption);
+            post.setDescription(description);
+            post.setAuthorAvatar(authorAvatar);
+            post.setOriginalContent(originalContent);
+            post.setOriginalLanguage(originalLanguage);
+            post.setTopic(topic);
+            post.setType(type);
+            post.setImageUrl(imageUrl);
+            post.setMovieName(movieName);
+            post.setMovieRating(movieRating);
+            post.setIsSpoiler(isSpoiler);
+            post.setMood(mood);
+            post.setLikeCount(likeCount);
+            post.setCommentCount(commentCount);
+            post.setStatus(status);
+            post.setCreatedAt(createdAt);
+            post.setUpdatedAt(updatedAt);
+            return post;
         }
     }
 }

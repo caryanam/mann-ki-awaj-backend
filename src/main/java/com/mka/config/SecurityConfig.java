@@ -38,10 +38,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Authentication APIs (register, login, verify, forgot-password, reset-password)
+                        // Authentication & Public APIs
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/api/v1/translation/**"
+                                "/api/v1/translation/**",
+                                "/api/mood/**"
                         ).permitAll()
 
                         // Static uploaded files
@@ -55,7 +56,8 @@ public class SecurityConfig {
                                 "/api/posts/*/comments",
                                 "/api/profile/*",
                                 "/api/users/*",
-                                "/api/report-reasons"
+                                "/api/report-reasons",
+                                "/api/mood/india"
                         ).permitAll()
 
                         // Admin APIs

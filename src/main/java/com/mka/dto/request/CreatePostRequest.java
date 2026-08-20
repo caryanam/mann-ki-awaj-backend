@@ -41,4 +41,12 @@ public class CreatePostRequest {
     private PostTopic topic;
 
     private PostType type;
+
+    private String movieName;
+
+    private Integer movieRating;
+
+    private Boolean isSpoiler;
+
+    private String mood;
 }
