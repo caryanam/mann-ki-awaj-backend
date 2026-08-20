@@ -83,6 +83,31 @@ public class TranslationController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/batch")
+    public ResponseEntity<?> translateBatch(@RequestBody Map<String, Object> payload, HttpServletRequest httpRequest) {
+        if (isRateLimited(httpRequest)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                    "success", false,
+                    "status", 429,
+                    "message", "Rate limit exceeded."
+            ));
+        }
+
+        Object textsObj = payload.get("texts");
+        String targetLang = (String) payload.get("targetLanguage");
+        String srcLang = (String) payload.getOrDefault("sourceLanguage", "auto");
+
+        java.util.List<String> texts = new java.util.ArrayList<>();
+        if (textsObj instanceof java.util.List<?> list) {
+            for (Object item : list) {
+                if (item != null) texts.add(item.toString());
+            }
+        }
+
+        Map<String, String> translations = translationService.translateBatch(texts, srcLang, targetLang != null ? targetLang : "EN");
+        return ResponseEntity.ok(Map.of("success", true, "translations", translations));
+    }
+
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> checkHealth() {
         boolean available = translationService.isTranslationServiceAvailable();

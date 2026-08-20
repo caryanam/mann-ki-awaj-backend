@@ -9,6 +9,7 @@ import com.mka.dto.response.ApiResponse;
 import com.mka.dto.response.ProfileResponse;
 import com.mka.dto.response.UserResponse;
 import com.mka.service.ProfileService;
+import com.mka.service.UserMuteService;
 import com.mka.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "User Profile, Credentials & Account Management APIs")
@@ -26,6 +29,7 @@ public class UserController {
 
     private final UserService userService;
     private final ProfileService profileService;
+    private final UserMuteService userMuteService;
 
     private String resolveUsername(Object principalObj) {
         if (principalObj instanceof UserDetails userDetails) {
@@ -92,5 +96,33 @@ public class UserController {
         UserResponse user = userService.getUserByEmail(email);
         userService.deactivateUser(user.getId());
         return ResponseEntity.ok(ApiResponse.success("Account deactivated successfully"));
+    }
+
+    @PostMapping("/mute/{username}")
+    @Operation(summary = "Mute a user handle so their posts are hidden from feed")
+    public ResponseEntity<ApiResponse<Void>> muteUser(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable String username) {
+        String identifier = resolveUsername(principalObj);
+        userMuteService.muteUser(identifier, username);
+        return ResponseEntity.ok(ApiResponse.success("User muted successfully"));
+    }
+
+    @DeleteMapping("/unmute/{username}")
+    @Operation(summary = "Unmute a user handle so their posts are visible again")
+    public ResponseEntity<ApiResponse<Void>> unmuteUser(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable String username) {
+        String identifier = resolveUsername(principalObj);
+        userMuteService.unmuteUser(identifier, username);
+        return ResponseEntity.ok(ApiResponse.success("User unmuted successfully"));
+    }
+
+    @GetMapping("/muted")
+    @Operation(summary = "Get list of muted handles for current user")
+    public ResponseEntity<ApiResponse<List<String>>> getMutedUsers(@AuthenticationPrincipal Object principalObj) {
+        String identifier = resolveUsername(principalObj);
+        List<String> muted = userMuteService.getMutedUsers(identifier);
+        return ResponseEntity.ok(ApiResponse.success("Muted users retrieved successfully", muted));
     }
 }

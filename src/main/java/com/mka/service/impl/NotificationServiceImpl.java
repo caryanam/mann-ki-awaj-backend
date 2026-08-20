@@ -114,6 +114,17 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.markAllAsReadByRecipientId(user.getId());
     }
 
+    @Override
+    @Transactional
+    public void deleteNotification(String identifier, Long notificationId) {
+        if (notificationId == null) return;
+        try {
+            notificationRepository.deleteNotificationByIdCustom(notificationId);
+        } catch (Exception e) {
+            System.err.println("Notice deleting notification #" + notificationId + ": " + e.getMessage());
+        }
+    }
+
     private NotificationResponse toResponse(Notification notification) {
         if (notification == null) return null;
 

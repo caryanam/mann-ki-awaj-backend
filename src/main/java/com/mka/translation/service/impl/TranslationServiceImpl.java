@@ -92,6 +92,23 @@ public class TranslationServiceImpl implements TranslationService {
     }
 
     @Override
+    public java.util.Map<String, String> translateBatch(java.util.List<String> texts, String sourceLanguage, String targetLanguage) {
+        if (texts == null || texts.isEmpty()) return java.util.Collections.emptyMap();
+        java.util.Map<String, String> resultMap = new java.util.HashMap<>();
+
+        for (String text : texts) {
+            if (text == null || text.isBlank()) continue;
+            try {
+                TranslationResponse resp = translate(text, sourceLanguage, targetLanguage);
+                resultMap.put(text, resp != null && resp.getTranslatedText() != null ? resp.getTranslatedText() : text);
+            } catch (Exception e) {
+                resultMap.put(text, text);
+            }
+        }
+        return resultMap;
+    }
+
+    @Override
     public boolean isTranslationServiceAvailable() {
         return openAiProvider.isAvailable();
     }

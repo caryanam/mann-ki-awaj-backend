@@ -17,4 +17,6 @@ public interface NotificationService {
     void markAsRead(String email, Long notificationId);
 
     void markAllAsRead(String email);
+
+    void deleteNotification(String identifier, Long notificationId);
 }

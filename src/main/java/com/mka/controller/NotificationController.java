@@ -104,4 +104,24 @@ public class NotificationController {
                         .build()
         );
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete notification by ID")
+    public ResponseEntity<ApiResponse<Void>> deleteNotification(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable Long id) {
+
+        String identifier = resolveUsername(principalObj);
+        if (!identifier.isBlank()) {
+            try {
+                notificationService.deleteNotification(identifier, id);
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Notification deleted successfully")
+                        .build()
+        );
+    }
 }
