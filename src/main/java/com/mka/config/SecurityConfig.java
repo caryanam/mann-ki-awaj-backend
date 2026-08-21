@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 org.springframework.http.HttpMethod.GET,
                                 "/api/posts",
                                 "/api/posts/*",
+                                "/api/posts/**",
                                 "/api/posts/*/comments",
                                 "/api/profile/*",
                                 "/api/users/*",
