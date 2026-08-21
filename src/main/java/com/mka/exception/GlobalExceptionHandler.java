@@ -125,20 +125,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleTranslationFailedException(com.mka.translation.exception.TranslationFailedException ex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
-        response.put("status", HttpStatus.BAD_GATEWAY.value());
+        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.put("message", ex.getMessage());
         response.put("timestamp", LocalDateTime.now());
-        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(com.mka.exception.openai.OpenAiAuthException.class)
     public ResponseEntity<Map<String, Object>> handleOpenAiAuthException(com.mka.exception.openai.OpenAiAuthException ex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
-        response.put("status", HttpStatus.BAD_GATEWAY.value());
+        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.put("message", ex.getMessage());
         response.put("timestamp", LocalDateTime.now());
-        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(com.mka.exception.openai.OpenAiRateLimitException.class)
@@ -165,10 +165,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleOpenAiApiException(com.mka.exception.openai.OpenAiApiException ex) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
-        response.put("status", HttpStatus.BAD_GATEWAY.value());
+        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.put("message", ex.getMessage());
         response.put("timestamp", LocalDateTime.now());
-        return new ResponseEntity<>(response, HttpStatus.BAD_GATEWAY);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler({org.springframework.web.multipart.MaxUploadSizeExceededException.class, org.springframework.web.multipart.MultipartException.class})

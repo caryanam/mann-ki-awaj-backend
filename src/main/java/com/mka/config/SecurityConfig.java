@@ -89,6 +89,8 @@ public class SecurityConfig {
                             response.setStatus(401);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
+                            response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin") != null ? request.getHeader("Origin") : "*");
+                            response.setHeader("Access-Control-Allow-Credentials", "true");
 
                             response.getWriter().write("""
                                     {
@@ -104,6 +106,8 @@ public class SecurityConfig {
                             response.setStatus(403);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
+                            response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin") != null ? request.getHeader("Origin") : "*");
+                            response.setHeader("Access-Control-Allow-Credentials", "true");
 
                             response.getWriter().write("""
                                     {
@@ -115,24 +119,30 @@ public class SecurityConfig {
                         })
                 )
 
+                .addFilterBefore(corsFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
+    @Bean
+    public org.springframework.web.filter.CorsFilter corsFilter() {
+        return new org.springframework.web.filter.CorsFilter(corsConfigurationSource());
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allowed origins for local development and production environments
-        configuration.setAllowedOrigins(List.of(
+        // Allowed origins for local development and production environments (using patterns for all domain variations & ports)
+        configuration.setAllowedOriginPatterns(List.of(
                 "https://awaazmanki.com",
                 "https://www.awaazmanki.com",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173"
+                "https://api.awaazmanki.com",
+                "https://*.awaazmanki.com",
+                "http://localhost:*",
+                "http://127.0.0.1:*"
         ));
 
         configuration.setAllowedMethods(List.of(
@@ -147,7 +157,10 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(List.of("*"));
 
         configuration.setExposedHeaders(List.of(
-                "Authorization"
+                "Authorization",
+                "Content-Type",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials"
         ));
 
         // Required for authenticated cross-origin requests
