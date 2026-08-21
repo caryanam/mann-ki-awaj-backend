@@ -33,6 +33,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import com.mka.entity.PendingRegistration;
+import com.mka.repository.PendingRegistrationRepository;
+import com.mka.service.EmailService;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -42,12 +48,15 @@ public class AuthServiceImpl implements AuthService {
     private final ProfileRepository profileRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final MobileVerificationRepository mobileVerificationRepository;
+    private final PendingRegistrationRepository pendingRegistrationRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
     private final MobileVerificationService mobileVerificationService;
+    private final EmailService emailService;
     private final ProfileMapper profileMapper;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
     @Transactional
@@ -55,78 +64,83 @@ public class AuthServiceImpl implements AuthService {
         String email = request.getEmail().trim().toLowerCase();
         String mobile = request.getMobileNumber().trim();
 
-        // 1. Check if user already exists by email
+        // 1. Check if user already exists in permanent users table
         Optional<User> existingUserOpt = userRepository.findByEmail(email);
         if (existingUserOpt.isPresent()) {
             User existingUser = existingUserOpt.get();
             if (Boolean.TRUE.equals(existingUser.getEmailVerified())) {
-                throw new ResourceAlreadyExistsException("Email is already registered");
+                throw new ResourceAlreadyExistsException("Email is already registered by a verified account");
             }
-
-            // Unverified user - check mobile number conflicts with other users
-            Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
-            if (userWithMobileOpt.isPresent() && !userWithMobileOpt.get().getEmail().equalsIgnoreCase(email)) {
-                throw new ResourceAlreadyExistsException("Mobile number is already registered by another user");
-            }
-
-            // Update registration details and password
-            existingUser.setFullName(request.getFullName().trim());
-            existingUser.setMobileNumber(mobile);
-            existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
-            existingUser.setActive(true);
-            existingUser.setDeleted(false);
-
-            User savedUser = userRepository.save(existingUser);
-
-            try {
-                emailVerificationService.sendVerificationOtp(savedUser);
-            } catch (Exception e) {}
-
-            return AuthResponse.builder()
-                    .userId(savedUser.getId())
-                    .email(savedUser.getEmail())
-                    .fullName(savedUser.getFullName())
-                    .role(savedUser.getRole())
-                    .emailVerified(savedUser.getEmailVerified())
-                    .mobileVerified(savedUser.getMobileVerified())
-                    .build();
+            // Delete old unverified user record so clean pending registration flow is used
+            emailVerificationRepository.deleteByUser(existingUser);
+            mobileVerificationRepository.deleteByUser(existingUser);
+            userRepository.delete(existingUser);
+            userRepository.flush();
         }
 
-        // 2. Check if mobile number is used by someone else
+        // 2. Check if mobile number is used by another user
         Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
         if (userWithMobileOpt.isPresent()) {
             User userWithMobile = userWithMobileOpt.get();
-            if (Boolean.TRUE.equals(userWithMobile.getEmailVerified())) {
-                throw new ResourceAlreadyExistsException("Mobile number is already registered");
+            if (Boolean.TRUE.equals(userWithMobile.getEmailVerified()) || Boolean.TRUE.equals(userWithMobile.getMobileVerified())) {
+                throw new ResourceAlreadyExistsException("Mobile number is already registered by a verified account");
             }
-            throw new ResourceAlreadyExistsException("Mobile number is already registered by an unverified account. Please use the original email to verify.");
+            // Delete stale unverified record
+            emailVerificationRepository.deleteByUser(userWithMobile);
+            mobileVerificationRepository.deleteByUser(userWithMobile);
+            userRepository.delete(userWithMobile);
+            userRepository.flush();
         }
 
-        User user = User.builder()
-                .fullName(request.getFullName().trim())
-                .email(email)
-                .mobileNumber(mobile)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER)
-                .active(true)
-                .deleted(false)
-                .emailVerified(false)
-                .mobileVerified(false)
-                .build();
+        // Generate 6-digit OTP code
+        String otp = String.format("%06d", secureRandom.nextInt(1000000));
+        LocalDateTime expiry = LocalDateTime.now().plusMinutes(15);
 
-        User savedUser = userRepository.save(user);
+        // Find existing pending registration by email or update it cleanly (No SQL duplicate key errors)
+        Optional<PendingRegistration> existingPendingOpt = pendingRegistrationRepository.findByEmail(email);
+        PendingRegistration pending;
+        if (existingPendingOpt.isPresent()) {
+            pending = existingPendingOpt.get();
+            pending.setFullName(request.getFullName().trim());
+            pending.setMobileNumber(mobile);
+            pending.setPassword(passwordEncoder.encode(request.getPassword()));
+            pending.setOtp(otp);
+            pending.setExpiryTime(expiry);
+        } else {
+            // Check if mobile number exists in another pending registration record
+            Optional<PendingRegistration> pendingMobileOpt = pendingRegistrationRepository.findByMobileNumber(mobile);
+            if (pendingMobileOpt.isPresent()) {
+                pendingRegistrationRepository.delete(pendingMobileOpt.get());
+                pendingRegistrationRepository.flush();
+            }
 
+            pending = PendingRegistration.builder()
+                    .fullName(request.getFullName().trim())
+                    .email(email)
+                    .mobileNumber(mobile)
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .otp(otp)
+                    .expiryTime(expiry)
+                    .build();
+        }
+
+        pendingRegistrationRepository.save(pending);
+
+        // Send OTP email
         try {
-            emailVerificationService.sendVerificationOtp(savedUser);
+            emailService.sendEmail(
+                    email,
+                    "Mann Ki Aavaj - Registration Verification OTP",
+                    "Your registration verification OTP code is: " + otp + ". Valid for 15 minutes."
+            );
         } catch (Exception e) {}
 
+        // DO NOT save to permanent 'users' database table until OTP is verified!
         return AuthResponse.builder()
-                .userId(savedUser.getId())
-                .email(savedUser.getEmail())
-                .fullName(savedUser.getFullName())
-                .role(savedUser.getRole())
-                .emailVerified(savedUser.getEmailVerified())
-                .mobileVerified(savedUser.getMobileVerified())
+                .email(email)
+                .fullName(request.getFullName().trim())
+                .emailVerified(false)
+                .mobileVerified(false)
                 .build();
     }
 

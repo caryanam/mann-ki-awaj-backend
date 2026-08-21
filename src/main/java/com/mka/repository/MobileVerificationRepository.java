@@ -17,4 +17,6 @@ public interface MobileVerificationRepository extends JpaRepository<MobileVerifi
     Optional<MobileVerification> findByUserAndOtpAndUsedFalse(User user, String otp);
 
     boolean existsByUser(User user);
+
+    void deleteByUser(User user);
 }
