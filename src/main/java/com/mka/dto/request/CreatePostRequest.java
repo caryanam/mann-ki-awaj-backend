@@ -1,7 +1,8 @@
 package com.mka.dto.request;
 
-import com.mka.enums.PostTopic;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.mka.enums.PostType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -11,7 +12,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreatePostRequest {
+
 
     @NotBlank(message = "Post content cannot be empty")
     @Size(max = 2500, message = "Post content cannot exceed 2500 characters")
@@ -38,9 +41,12 @@ public class CreatePostRequest {
     @Size(max = 10, message = "Original language code cannot exceed 10 characters")
     private String originalLanguage;
 
-    private PostTopic topic;
+    private String topic;
+
+    private String subtopic;
 
     private PostType type;
+
 
     private String movieName;
 

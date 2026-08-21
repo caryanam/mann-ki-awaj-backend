@@ -11,7 +11,8 @@ public interface PostService {
 
     PostResponse createPost(String email, CreatePostRequest request);
 
-    Page<PostResponse> getFeed(String email, PostTopic topic, Pageable pageable);
+    Page<PostResponse> getFeed(String email, String topic, Pageable pageable);
+
 
     PostResponse getPostById(String email, Long id);
 

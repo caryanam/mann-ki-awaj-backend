@@ -31,8 +31,10 @@ public class PostResponse {
     private String translatedContent;
     private String originalLanguage;
     private String displayLanguage;
-    private PostTopic topic;
+    private String topic;
+    private String subtopic;
     private PostType type;
+
     private String imageUrl;
     private String movieName;
     private Integer movieRating;

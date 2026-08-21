@@ -49,7 +49,8 @@ public class PostController {
     @Operation(summary = "Get post feed with optional topic filter and automatic AI translation")
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getFeed(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) PostTopic topic,
+            @RequestParam(required = false) String topic,
+
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,

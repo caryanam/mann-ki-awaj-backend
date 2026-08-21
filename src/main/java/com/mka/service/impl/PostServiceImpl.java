@@ -11,7 +11,9 @@ import com.mka.enums.PostTopic;
 import com.mka.enums.PostType;
 import com.mka.enums.ReactionType;
 import com.mka.exception.ResourceNotFoundException;
+import com.mka.repository.CustomTopicRepository;
 import com.mka.repository.PostLikeRepository;
+
 import com.mka.repository.PostReactionRepository;
 import com.mka.repository.PostRepository;
 import com.mka.repository.ProfileRepository;
@@ -53,6 +55,8 @@ public class PostServiceImpl implements PostService {
     private final SavedPostRepository savedPostRepository;
     private final AiService aiService;
     private final TranslationService translationService;
+    private final CustomTopicRepository customTopicRepository;
+
 
     @Override
     @Transactional
@@ -94,6 +98,35 @@ public class PostServiceImpl implements PostService {
 
         aiService.moderateContent(user, fullPostText, "POST");
 
+        String reqTopic = request.getTopic() != null ? request.getTopic().trim() : null;
+        String reqSubtopic = request.getSubtopic() != null ? request.getSubtopic().trim() : null;
+
+        if ((reqTopic == null || reqTopic.isBlank()) && request.getContent() != null) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("#([A-Z0-9_]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(request.getContent());
+            if (m.find()) {
+                reqTopic = m.group(1).toUpperCase();
+            }
+        }
+
+        String finalTopic = (reqTopic != null && !reqTopic.isBlank()) ? reqTopic.toUpperCase().replaceAll("[^A-Z0-9_]", "") : "GENERAL";
+        String finalSubtopic = (reqSubtopic != null && !reqSubtopic.isBlank()) ? reqSubtopic.toUpperCase().replaceAll("[^A-Z0-9_]", "") : null;
+
+        if (!finalTopic.isEmpty() && !finalTopic.equals("GENERAL")) {
+            com.mka.entity.CustomTopic topicEntity = customTopicRepository.findByNameIgnoreCase(finalTopic).orElse(null);
+            if (topicEntity == null) {
+                topicEntity = com.mka.entity.CustomTopic.builder()
+                        .name(finalTopic)
+                        .label(finalTopic.replace("_", " "))
+                        .icon("💡")
+                        .createdByUsername(handle)
+                        .postCount(1L)
+                        .build();
+            } else {
+                topicEntity.setPostCount((topicEntity.getPostCount() != null ? topicEntity.getPostCount() : 0L) + 1L);
+            }
+            customTopicRepository.save(topicEntity);
+        }
+
         Post post = Post.builder()
                 .user(user)
                 .username(handle)
@@ -104,7 +137,8 @@ public class PostServiceImpl implements PostService {
                 .authorAvatar(avatar)
                 .originalContent(request.getContent())
                 .originalLanguage(originalLang)
-                .topic(request.getTopic() != null ? request.getTopic() : PostTopic.GENERAL)
+                .topic(finalTopic)
+                .subtopic(finalSubtopic)
                 .type(request.getType() != null ? request.getType() : PostType.TEXT)
                 .imageUrl(request.getImageUrl())
                 .movieName(request.getMovieName())
@@ -123,17 +157,23 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PostResponse> getFeed(String email, PostTopic topic, Pageable pageable) {
+    public Page<PostResponse> getFeed(String email, String topic, Pageable pageable) {
         User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
         Profile profile = user != null ? profileRepository.findByUser(user).orElse(null) : null;
         String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
 
         Page<Post> posts;
-        if (topic != null) {
-            posts = postRepository.findByStatusAndTopic(PostStatus.ACTIVE, topic, pageable);
+        if (topic != null && !topic.isBlank()) {
+            Page<Post> mainTopicPosts = postRepository.findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), pageable);
+            if (mainTopicPosts.hasContent()) {
+                posts = mainTopicPosts;
+            } else {
+                posts = postRepository.findByStatusAndSubtopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), pageable);
+            }
         } else {
             posts = postRepository.findByStatus(PostStatus.ACTIVE, pageable);
         }
+
 
         if (posts.isEmpty()) {
             return Page.empty(pageable);

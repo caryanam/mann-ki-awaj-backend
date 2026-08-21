@@ -43,13 +43,16 @@ public class Post {
     @Column(nullable = false, length = 10)
     private String originalLanguage = "EN";
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private PostTopic topic = PostTopic.GENERAL;
+    @Column(name = "topic", nullable = false, length = 100)
+    private String topic = "GENERAL";
+
+    @Column(name = "subtopic", length = 100)
+    private String subtopic;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private PostType type = PostType.TEXT;
+
 
     @Column(length = 255)
     private String imageUrl;
@@ -81,7 +84,7 @@ public class Post {
 
     public Post() {}
 
-    public Post(Long id, User user, String username, String title, String summary, String caption, String description, String authorAvatar, String originalContent, String originalLanguage, PostTopic topic, PostType type, String imageUrl, Long likeCount, Long commentCount, PostStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Post(Long id, User user, String username, String title, String summary, String caption, String description, String authorAvatar, String originalContent, String originalLanguage, String topic, PostType type, String imageUrl, Long likeCount, Long commentCount, PostStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.username = username;
@@ -92,8 +95,9 @@ public class Post {
         this.authorAvatar = authorAvatar;
         this.originalContent = originalContent;
         this.originalLanguage = originalLanguage != null ? originalLanguage : "EN";
-        this.topic = topic != null ? topic : PostTopic.GENERAL;
+        this.topic = topic != null ? topic : "GENERAL";
         this.type = type != null ? type : PostType.TEXT;
+
         this.imageUrl = imageUrl;
         this.likeCount = likeCount != null ? likeCount : 0L;
         this.commentCount = commentCount != null ? commentCount : 0L;
@@ -146,8 +150,11 @@ public class Post {
     public String getOriginalLanguage() { return originalLanguage; }
     public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
 
-    public PostTopic getTopic() { return topic; }
-    public void setTopic(PostTopic topic) { this.topic = topic; }
+    public String getTopic() { return topic; }
+    public void setTopic(String topic) { this.topic = topic; }
+
+    public String getSubtopic() { return subtopic; }
+    public void setSubtopic(String subtopic) { this.subtopic = subtopic; }
 
     public PostType getType() { return type; }
     public void setType(PostType type) { this.type = type; }
@@ -195,7 +202,8 @@ public class Post {
         private String authorAvatar;
         private String originalContent;
         private String originalLanguage = "EN";
-        private PostTopic topic = PostTopic.GENERAL;
+        private String topic = "GENERAL";
+        private String subtopic;
         private PostType type = PostType.TEXT;
         private String imageUrl;
         private String movieName;
@@ -218,7 +226,8 @@ public class Post {
         public PostBuilder authorAvatar(String authorAvatar) { this.authorAvatar = authorAvatar; return this; }
         public PostBuilder originalContent(String originalContent) { this.originalContent = originalContent; return this; }
         public PostBuilder originalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; return this; }
-        public PostBuilder topic(PostTopic topic) { this.topic = topic; return this; }
+        public PostBuilder topic(String topic) { this.topic = topic; return this; }
+        public PostBuilder subtopic(String subtopic) { this.subtopic = subtopic; return this; }
         public PostBuilder type(PostType type) { this.type = type; return this; }
         public PostBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
         public PostBuilder movieName(String movieName) { this.movieName = movieName; return this; }
@@ -244,7 +253,9 @@ public class Post {
             post.setOriginalContent(originalContent);
             post.setOriginalLanguage(originalLanguage);
             post.setTopic(topic);
+            post.setSubtopic(subtopic);
             post.setType(type);
+
             post.setImageUrl(imageUrl);
             post.setMovieName(movieName);
             post.setMovieRating(movieRating);
