@@ -26,6 +26,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
     private final MobileVerificationService mobileVerificationService;
+    private final com.mka.service.EnquiryService enquiryService;
 
     @PostMapping("/register")
     @Operation(summary = "Register User Account")
@@ -94,7 +95,8 @@ public class AuthController {
     @PostMapping("/inquiry")
     @Operation(summary = "Submit Contact & Support Inquiry to Admin")
     public ResponseEntity<ApiResponse<String>> submitInquiry(@Valid @RequestBody CreateInquiryRequest request) {
-        String ticketId = "MKA-INQ-" + (System.currentTimeMillis() % 100000);
+        String ticketId = enquiryService.createEnquiry(request);
         return ResponseEntity.ok(ApiResponse.success("Support inquiry submitted successfully. Ticket ID: #" + ticketId, ticketId));
     }
+
 }

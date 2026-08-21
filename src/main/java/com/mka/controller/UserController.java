@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.mka.entity.UserHidePost;
+import com.mka.service.UserHidePostService;
+
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "User Profile, Credentials & Account Management APIs")
@@ -30,6 +33,7 @@ public class UserController {
     private final UserService userService;
     private final ProfileService profileService;
     private final UserMuteService userMuteService;
+    private final UserHidePostService userHidePostService;
 
     private String resolveUsername(Object principalObj) {
         if (principalObj instanceof UserDetails userDetails) {
@@ -125,4 +129,33 @@ public class UserController {
         List<String> muted = userMuteService.getMutedUsers(identifier);
         return ResponseEntity.ok(ApiResponse.success("Muted users retrieved successfully", muted));
     }
+
+    @PostMapping("/hide-post/{postId}")
+    @Operation(summary = "Hide a post from current user feed and persist in history")
+    public ResponseEntity<ApiResponse<Void>> hidePost(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable Long postId) {
+        String identifier = resolveUsername(principalObj);
+        userHidePostService.hidePost(identifier, postId);
+        return ResponseEntity.ok(ApiResponse.success("Post hidden successfully"));
+    }
+
+    @DeleteMapping("/unhide-post/{postId}")
+    @Operation(summary = "Unhide a post and restore to feed")
+    public ResponseEntity<ApiResponse<Void>> unhidePost(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable Long postId) {
+        String identifier = resolveUsername(principalObj);
+        userHidePostService.unhidePost(identifier, postId);
+        return ResponseEntity.ok(ApiResponse.success("Post unhidden successfully"));
+    }
+
+    @GetMapping("/hidden-posts")
+    @Operation(summary = "Get all hidden posts history for current user")
+    public ResponseEntity<ApiResponse<List<UserHidePost>>> getHiddenPosts(@AuthenticationPrincipal Object principalObj) {
+        String identifier = resolveUsername(principalObj);
+        List<UserHidePost> list = userHidePostService.getHiddenPosts(identifier);
+        return ResponseEntity.ok(ApiResponse.success("Hidden posts retrieved successfully", list));
+    }
 }
+

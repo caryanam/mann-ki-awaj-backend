@@ -34,4 +34,7 @@ public class CreateInquiryRequest {
     @NotBlank(message = "Message details are required")
     @Size(max = 2000, message = "Message cannot exceed 2000 characters")
     private String message;
+
+    private String imageUrl;
 }
+

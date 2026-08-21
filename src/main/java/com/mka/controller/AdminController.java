@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
+    private final com.mka.service.EnquiryService enquiryService;
+
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get Admin Dashboard Overview Statistics")
@@ -393,4 +395,47 @@ public class AdminController {
                         .build()
         );
     }
+
+    @GetMapping("/enquiries")
+    @Operation(summary = "Get all landing page user inquiries (Admin only)")
+    public ResponseEntity<ApiResponse<java.util.List<com.mka.dto.response.EnquiryResponse>>> getAllEnquiries() {
+        return ResponseEntity.ok(
+                ApiResponse.<java.util.List<com.mka.dto.response.EnquiryResponse>>builder()
+                        .success(true)
+                        .message("Enquiries list retrieved")
+                        .data(enquiryService.getAllEnquiries())
+                        .build()
+        );
+    }
+
+    @PutMapping("/enquiries/{id}/status")
+    @Operation(summary = "Update inquiry status and admin notes (Admin only)")
+    public ResponseEntity<ApiResponse<com.mka.dto.response.EnquiryResponse>> updateEnquiryStatus(
+            @PathVariable Long id,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String adminNotes) {
+
+        com.mka.dto.response.EnquiryResponse updated = enquiryService.updateStatus(id, status, adminNotes);
+        return ResponseEntity.ok(
+                ApiResponse.<com.mka.dto.response.EnquiryResponse>builder()
+                        .success(true)
+                        .message("Enquiry status updated successfully")
+                        .data(updated)
+                        .build()
+        );
+    }
+
+
+    @DeleteMapping("/enquiries/{id}")
+    @Operation(summary = "Delete user inquiry (Admin only)")
+    public ResponseEntity<ApiResponse<Void>> deleteEnquiry(@PathVariable Long id) {
+        enquiryService.deleteEnquiry(id);
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Enquiry deleted successfully")
+                        .build()
+        );
+    }
 }
+
