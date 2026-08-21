@@ -5,7 +5,9 @@ import com.mka.dto.request.*;
 import com.mka.dto.response.AuthResponse;
 import com.mka.entity.EmailVerification;
 import com.mka.entity.MobileVerification;
+import com.mka.entity.PendingRegistration;
 import com.mka.entity.User;
+
 import com.mka.enums.Role;
 import com.mka.exception.ResourceAlreadyExistsException;
 import com.mka.exception.UnauthorizedException;
@@ -70,8 +72,16 @@ class AuthServiceImplTest {
     @Mock
     private ProfileMapper profileMapper;
 
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private com.mka.repository.PendingRegistrationRepository pendingRegistrationRepository;
+
     @InjectMocks
     private AuthServiceImpl authService;
+
+
 
     private User testUser;
 
@@ -102,14 +112,17 @@ class AuthServiceImplTest {
         when(userRepository.findByEmail("newuser@example.com")).thenReturn(Optional.empty());
         when(userRepository.findByMobileNumber("9998887776")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("password123")).thenReturn("encoded_pass");
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(pendingRegistrationRepository.findByEmail("newuser@example.com")).thenReturn(Optional.empty());
+        when(pendingRegistrationRepository.save(any(PendingRegistration.class))).thenReturn(new PendingRegistration());
 
         AuthResponse response = authService.register(request);
 
         assertNotNull(response);
-        verify(userRepository).save(any(User.class));
-        verify(emailVerificationService).sendVerificationOtp(any());
+        verify(pendingRegistrationRepository).save(any(PendingRegistration.class));
+        verify(emailService).sendEmail(anyString(), anyString(), anyString());
     }
+
+
 
     @Test
     void testRegister_DuplicateEmail_Verified_ThrowsResourceAlreadyExistsException() {

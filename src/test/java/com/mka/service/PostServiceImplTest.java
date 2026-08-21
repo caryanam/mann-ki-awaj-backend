@@ -88,7 +88,7 @@ class PostServiceImplTest {
                 .authorAvatar("avatar_default")
                 .originalContent("Hello World")
                 .originalLanguage("EN")
-                .topic(PostTopic.GENERAL)
+                .topic("GENERAL")
                 .type(PostType.TEXT)
                 .status(PostStatus.ACTIVE)
                 .likeCount(0L)
@@ -100,7 +100,7 @@ class PostServiceImplTest {
     void testCreatePost_Success() {
         CreatePostRequest request = new CreatePostRequest();
         request.setContent("Hello World");
-        request.setTopic(PostTopic.GENERAL);
+        request.setTopic("GENERAL");
         request.setType(PostType.TEXT);
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
@@ -124,19 +124,20 @@ class PostServiceImplTest {
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(profileRepository.findByUser(testUser)).thenReturn(Optional.of(testProfile));
-        when(postRepository.findByStatusAndTopic(PostStatus.ACTIVE, PostTopic.TECH, pageable)).thenReturn(page);
+        when(postRepository.findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, "TECH", pageable)).thenReturn(page);
         when(profileRepository.findByUserIdIn(anyList())).thenReturn(List.of(testProfile));
         when(postReactionRepository.findReactionCountsByPostIdIn(anyList())).thenReturn(Collections.emptyList());
         when(postReactionRepository.findByUserIdAndPostIdIn(anyLong(), anyList())).thenReturn(Collections.emptyList());
         when(postLikeRepository.findLikedPostIdsByUserIdAndPostIdIn(anyLong(), anyList())).thenReturn(Collections.emptyList());
         when(savedPostRepository.findSavedPostIdsByUserIdAndPostIdIn(anyLong(), anyList())).thenReturn(Collections.emptyList());
 
-        Page<PostResponse> result = postService.getFeed("test@example.com", PostTopic.TECH, pageable);
+        Page<PostResponse> result = postService.getFeed("test@example.com", "TECH", pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(postRepository).findByStatusAndTopic(PostStatus.ACTIVE, PostTopic.TECH, pageable);
+        verify(postRepository).findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, "TECH", pageable);
     }
+
 
     @Test
     void testGetFeed_AuthenticatedUser_UsesBatchQueriesSingleTime() {

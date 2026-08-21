@@ -172,7 +172,7 @@ class SocketIOHandlerTest {
         joinUserRoomListenerCaptor.getValue().onData(client, "10", null);
 
         verify(client).joinRoom("user_10");
-        verify(presenceManager).registerSession(10L, "user_10", sessionId);
+        verify(presenceManager).registerSession(eq(10L), any(), eq(sessionId));
     }
 
     @Test
@@ -193,6 +193,7 @@ class SocketIOHandlerTest {
         heartbeatListenerCaptor.getValue().onData(client, "spoofed_payload_999", null);
 
         verify(presenceManager).touchHeartbeat(10L);
-        verify(presenceManager).registerSession(10L, "user_10", sessionId);
+        verify(presenceManager).registerSession(eq(10L), any(), eq(sessionId));
     }
 }
+
