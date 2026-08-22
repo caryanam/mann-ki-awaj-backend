@@ -45,6 +45,11 @@ public class TranslationServiceImpl implements TranslationService {
         }
 
         String cleanText = text.trim();
+        if (cleanText.contains("%E0%A4%") || cleanText.contains("%E0%A5%") || cleanText.contains("%")) {
+            try {
+                cleanText = java.net.URLDecoder.decode(cleanText, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {}
+        }
         String srcLang = sourceLanguage.trim();
         String tgtLang = targetLanguage.trim();
 
@@ -77,18 +82,82 @@ public class TranslationServiceImpl implements TranslationService {
             try {
                 TranslationResponse response = openAiProvider.translate(request);
                 long duration = System.currentTimeMillis() - startTime;
-                log.info("OpenAI Translation completed successfully: [{}] -> [{}] in {}ms", srcLang, tgtLang, duration);
-                return response;
+                if (response != null && response.getTranslatedText() != null && !response.getTranslatedText().isBlank()) {
+                    log.info("OpenAI Translation completed successfully: [{}] -> [{}] in {}ms", srcLang, tgtLang, duration);
+                    return response;
+                }
             } catch (Exception ex) {
                 long duration = System.currentTimeMillis() - startTime;
-                log.warn("OpenAI Translation provider failed after {}ms: {}. Returning graceful original text fallback.", duration, ex.getMessage());
+                log.warn("OpenAI Translation provider failed after {}ms: {}. Trying server-side fallback.", duration, ex.getMessage());
             }
         } else {
-            log.warn("OpenAI Translation provider is not configured or unavailable. Returning graceful original text fallback.");
+            log.info("OpenAI Translation provider is not configured or unavailable. Executing server-side translation fallback.");
         }
 
-        // 3. Graceful Fallback: Return original text
-        return TranslationResponse.fallback(cleanText, srcLang, tgtLang);
+        // 3. Server-side Google GTX Fallback
+        String sanitizedText = sanitizeEncodedSymbols(cleanText);
+        String gtxTranslated = translateViaGoogleGtx(sanitizedText, tgtLang);
+        if (gtxTranslated != null && !gtxTranslated.isBlank() && !gtxTranslated.equals(sanitizedText)) {
+            return TranslationResponse.builder()
+                    .originalText(sanitizedText)
+                    .translatedText(gtxTranslated)
+                    .sourceLanguage(srcLang)
+                    .targetLanguage(tgtLang)
+                    .engine("GoogleGTX")
+                    .cached(false)
+                    .build();
+        }
+
+        // 4. Graceful Fallback: Return original text
+        return TranslationResponse.fallback(sanitizedText, srcLang, tgtLang);
+    }
+
+    private String sanitizeEncodedSymbols(String str) {
+        if (str == null || str.isBlank()) return str;
+        String clean = str;
+        if (clean.contains("%")) {
+            try {
+                clean = java.net.URLDecoder.decode(clean, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {}
+        }
+        return clean
+                .replace("%2सी", ",")
+                .replace("%3एफ", "?")
+                .replace("%2स", ",")
+                .replace("%3ए", "?")
+                .replaceAll("(?i)%2C", ",")
+                .replaceAll("(?i)%3F", "?")
+                .replaceAll("(?i)%21", "!")
+                .replace("%20", " ")
+                .replaceAll("(?i)%3([Ff]|एफ)?", "?")
+                .replaceAll("(?i)%2([Cc]|सी)?", ",");
+    }
+
+    private String translateViaGoogleGtx(String text, String targetLang) {
+        try {
+            String cleanInput = sanitizeEncodedSymbols(text);
+            String encodedText = java.net.URLEncoder.encode(cleanInput, java.nio.charset.StandardCharsets.UTF_8);
+            String tgt = targetLang != null ? targetLang.toLowerCase() : "en";
+            String urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" + tgt + "&dt=t&q=" + encodedText;
+            java.net.URI uri = java.net.URI.create(urlStr);
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            java.util.List<?> response = restTemplate.getForObject(uri, java.util.List.class);
+            if (response != null && !response.isEmpty() && response.get(0) instanceof java.util.List<?> parts) {
+                StringBuilder sb = new StringBuilder();
+                for (Object item : parts) {
+                    if (item instanceof java.util.List<?> part && !part.isEmpty() && part.get(0) != null) {
+                        sb.append(part.get(0).toString());
+                    }
+                }
+                String result = sb.toString().trim();
+                if (!result.isEmpty()) {
+                    return sanitizeEncodedSymbols(result);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Server-side Google GTX translation failed: {}", e.getMessage());
+        }
+        return null;
     }
 
     @Override

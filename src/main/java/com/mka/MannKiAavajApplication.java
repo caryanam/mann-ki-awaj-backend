@@ -2,9 +2,13 @@ package com.mka;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import com.mka.config.MusicStorageProperties;
+import com.mka.config.MusicUploadProperties;
 
 @SpringBootApplication
+@EnableConfigurationProperties({MusicStorageProperties.class, MusicUploadProperties.class})
 @EnableJpaAuditing
 @org.springframework.scheduling.annotation.EnableScheduling
 public class MannKiAavajApplication {

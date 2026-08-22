@@ -45,8 +45,15 @@ public class SecurityConfig {
                                 "/api/mood/**"
                         ).permitAll()
 
-                        // Static uploaded files
-                        .requestMatchers("/uploads/**").permitAll()
+                        // Public, read-only published music catalog
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/api/music/tracks",
+                                "/api/music/tracks/*"
+                        ).permitAll()
+
+                        // Static uploaded files and published music media
+                        .requestMatchers("/uploads/**", "/media/music/**").permitAll()
 
                         // Public feed, posts, comments, profiles & reasons view
                         .requestMatchers(
@@ -157,9 +164,12 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(List.of("*"));
 
         configuration.setExposedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Access-Control-Allow-Origin",
+                 "Authorization",
+                 "Content-Type",
+                 "Content-Length",
+                 "Accept-Ranges",
+                 "Content-Range",
+                 "Access-Control-Allow-Origin",
                 "Access-Control-Allow-Credentials"
         ));
 
