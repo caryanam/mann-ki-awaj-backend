@@ -21,8 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequestMapping("/api/v1/translation")
 public class TranslationController {
 
-    private static final int MAX_REQUESTS_PER_MINUTE = 30;
+    private static final int MAX_REQUESTS_PER_MINUTE = 300;
     private final ConcurrentHashMap<String, RequestCounter> requestCounts = new ConcurrentHashMap<>();
+
     private final TranslationService translationService;
 
     public TranslationController(TranslationService translationService) {
