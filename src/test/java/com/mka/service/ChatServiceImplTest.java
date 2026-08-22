@@ -9,11 +9,13 @@ import com.mka.entity.Profile;
 import com.mka.entity.User;
 import com.mka.enums.MessageType;
 import com.mka.enums.Role;
+import com.mka.exception.GlobalExceptionHandler;
 import com.mka.repository.ChatMessageRepository;
 import com.mka.repository.ChatRoomRepository;
 import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
 import com.mka.service.impl.ChatServiceImpl;
+import com.corundumstudio.socketio.BroadcastOperations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,10 +25,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceImplTest {
@@ -62,6 +68,9 @@ class ChatServiceImplTest {
     private User targetUser;
     private ChatRoom chatRoom;
 
+    @Mock
+    private BroadcastOperations broadcastOperations;
+
     @BeforeEach
     void setUp() {
         senderUser = User.builder().id(1L).email("sender@example.com").role(Role.USER).build();
@@ -93,7 +102,7 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void testSendMessage_Success() {
+    void testSendMessage_Participant1CanSend() {
         SendMessageRequest request = new SendMessageRequest();
         request.setRoomId(100L);
         request.setContent("Hello there!");
@@ -116,12 +125,71 @@ class ChatServiceImplTest {
                 Profile.builder().user(senderUser).avatar("avatar_1").preferredLanguage("EN").build()
         ));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenReturn(message);
+        when(socketIOServer.getRoomOperations(anyString())).thenReturn(broadcastOperations);
 
         ChatMessageResponse response = chatService.sendMessage("sender@example.com", request);
 
         assertNotNull(response);
         assertEquals(50L, response.getId());
         assertEquals("Hello there!", response.getContent());
+        verify(chatMessageRepository).save(any(ChatMessage.class));
+        verify(broadcastOperations, atLeastOnce()).sendEvent(eq("receive_message"), any());
+    }
+
+    @Test
+    void testSendMessage_Participant2CanSend() {
+        SendMessageRequest request = new SendMessageRequest();
+        request.setRoomId(100L);
+        request.setContent("Reply from participant two");
+
+        ChatMessage savedMessage = ChatMessage.builder()
+                .id(51L)
+                .room(chatRoom)
+                .sender(targetUser)
+                .senderAvatar("avatar_2")
+                .content(request.getContent())
+                .messageType(MessageType.TEXT)
+                .isRead(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(userRepository.findByEmail("target@example.com")).thenReturn(Optional.of(targetUser));
+        when(chatRoomRepository.findById(100L)).thenReturn(Optional.of(chatRoom));
+        when(profileRepository.findByUser(targetUser)).thenReturn(Optional.of(
+                Profile.builder().user(targetUser).avatar("avatar_2").username("user_2").build()
+        ));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenReturn(savedMessage);
+        when(socketIOServer.getRoomOperations(anyString())).thenReturn(broadcastOperations);
+
+        ChatMessageResponse response = chatService.sendMessage("target@example.com", request);
+
+        assertEquals(51L, response.getId());
+        assertEquals(2L, response.getSenderId());
+        verify(chatMessageRepository).save(any(ChatMessage.class));
+        verify(broadcastOperations, atLeastOnce()).sendEvent(eq("receive_message"), any());
+    }
+
+    @Test
+    void testSendMessage_UnrelatedUserGetsForbiddenWithoutPersistenceOrBroadcast() {
+        User unrelatedUser = User.builder().id(3L).email("unrelated@example.com").role(Role.USER).build();
+        SendMessageRequest request = new SendMessageRequest();
+        request.setRoomId(100L);
+        request.setContent("Unauthorized message");
+
+        when(userRepository.findByEmail("unrelated@example.com")).thenReturn(Optional.of(unrelatedUser));
+        when(chatRoomRepository.findById(100L)).thenReturn(Optional.of(chatRoom));
+
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+                () -> chatService.sendMessage("unrelated@example.com", request));
+        ResponseEntity<Map<String, Object>> errorResponse =
+                new GlobalExceptionHandler().handleAccessDeniedException(exception);
+
+        assertEquals("User is not a participant in this chat room.", exception.getMessage());
+        assertEquals(HttpStatus.FORBIDDEN, errorResponse.getStatusCode());
+        verifyNoInteractions(aiService);
+        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+        verify(chatRoomRepository, never()).save(any(ChatRoom.class));
+        verifyNoInteractions(socketIOServer, broadcastOperations, notificationService);
     }
 
     @Test
@@ -163,7 +231,7 @@ class ChatServiceImplTest {
         when(userRepository.findByEmail("unrelated@example.com")).thenReturn(Optional.of(unrelatedUser));
         when(chatRoomRepository.findById(100L)).thenReturn(Optional.of(pendingRoom));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
                 chatService.rejectRoomRequest("unrelated@example.com", 100L)
         );
 

@@ -22,6 +22,7 @@ import com.mka.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,6 +96,8 @@ public class ChatServiceImpl implements ChatService {
 
         ChatRoom room = chatRoomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Chat room not found with id: " + request.getRoomId()));
+
+        verifyRoomParticipant(room, sender);
 
         aiService.moderateContent(sender, request.getContent(), "MESSAGE");
 
@@ -184,11 +187,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
 
-        boolean isParticipant = (room.getParticipant1() != null && room.getParticipant1().getId().equals(currentUser.getId()))
-                || (room.getParticipant2() != null && room.getParticipant2().getId().equals(currentUser.getId()));
-        if (!isParticipant) {
-            throw new IllegalArgumentException("User is not a participant in this chat room.");
-        }
+        verifyRoomParticipant(room, currentUser);
 
         if ("ACCEPTED".equalsIgnoreCase(room.getRequestStatus())) {
             return mapRoomToResponse(room, currentUser);
@@ -223,11 +222,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
 
-        boolean isParticipant = (room.getParticipant1() != null && room.getParticipant1().getId().equals(currentUser.getId()))
-                || (room.getParticipant2() != null && room.getParticipant2().getId().equals(currentUser.getId()));
-        if (!isParticipant) {
-            throw new IllegalArgumentException("User is not a participant in this chat room.");
-        }
+        verifyRoomParticipant(room, currentUser);
 
         if (room.getRequestSenderId() != null && room.getRequestSenderId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Sender cannot reject their own request.");
@@ -250,6 +245,16 @@ public class ChatServiceImpl implements ChatService {
             System.err.println("Failed to broadcast room_status_change: " + e.getMessage());
         }
         return resp;
+    }
+
+    private void verifyRoomParticipant(ChatRoom room, User user) {
+        boolean isParticipant = user != null && (
+                room.getParticipant1() != null && room.getParticipant1().getId().equals(user.getId())
+                        || room.getParticipant2() != null && room.getParticipant2().getId().equals(user.getId())
+        );
+        if (!isParticipant) {
+            throw new AccessDeniedException("User is not a participant in this chat room.");
+        }
     }
 
     private ChatRoomResponse mapRoomToResponse(ChatRoom room, User currentUser) {

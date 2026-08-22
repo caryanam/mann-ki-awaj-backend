@@ -28,6 +28,11 @@ public class CustomTopic extends BaseEntity {
     @Column(name = "created_by_username", length = 100)
     private String createdByUsername;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "parent_topic", length = 40)
+    @Builder.Default
+    private com.mka.enums.PostTopic parentTopic = com.mka.enums.PostTopic.GENERAL;
+
     @Column(name = "post_count")
     @Builder.Default
     private Long postCount = 0L;

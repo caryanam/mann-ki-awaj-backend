@@ -12,9 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.Map;
 
@@ -22,6 +24,8 @@ import java.util.Map;
 @Tag(name = "File Upload", description = "Image Upload & Static Media File Serving Endpoint")
 @RequiredArgsConstructor
 public class FileUploadController {
+
+    private static final Path UPLOAD_ROOT = Paths.get("uploads").toAbsolutePath().normalize();
 
     private final AiService aiService;
     private final UserRepository userRepository;
@@ -53,11 +57,15 @@ public class FileUploadController {
     @GetMapping("/uploads/{filename:.+}")
     @Operation(summary = "Stream or download uploaded media file")
     public ResponseEntity<byte[]> getUploadedFile(@PathVariable String filename) {
-        try {
-            File uploadsDir = new File("uploads").getAbsoluteFile();
-            File file = new File(uploadsDir, filename);
+        Path file = resolveSafeUploadPath(filename);
+        if (file == null) {
+            return ResponseEntity.badRequest()
+                    .header(HttpHeaders.CONTENT_TYPE, "text/plain;charset=UTF-8")
+                    .body("Invalid file name".getBytes(StandardCharsets.UTF_8));
+        }
 
-            if (!file.exists() || !file.isFile()) {
+        try {
+            if (!Files.exists(file) || !Files.isRegularFile(file)) {
                 String svgFallback = """
                         <svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
                           <rect width="100%" height="100%" fill="#F8F5F3" rx="16"/>
@@ -76,8 +84,8 @@ public class FileUploadController {
                         .body(svgFallback.getBytes(StandardCharsets.UTF_8));
             }
 
-            byte[] imageBytes = Files.readAllBytes(file.toPath());
-            String contentType = Files.probeContentType(file.toPath());
+            byte[] imageBytes = Files.readAllBytes(file);
+            String contentType = Files.probeContentType(file);
             if (contentType == null) {
                 if (filename.toLowerCase().endsWith(".png")) contentType = "image/png";
                 else if (filename.toLowerCase().endsWith(".webp")) contentType = "image/webp";
@@ -101,6 +109,25 @@ public class FileUploadController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "image/svg+xml")
                     .body(svgFallback.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private Path resolveSafeUploadPath(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return null;
+        }
+
+        try {
+            String decodedFilename = URLDecoder.decode(filename, StandardCharsets.UTF_8);
+            Path requestedPath = Paths.get(decodedFilename);
+            if (requestedPath.isAbsolute()) {
+                return null;
+            }
+
+            Path resolvedPath = UPLOAD_ROOT.resolve(requestedPath).normalize();
+            return resolvedPath.startsWith(UPLOAD_ROOT) ? resolvedPath : null;
+        } catch (IllegalArgumentException ex) {
+            return null;
         }
     }
 }

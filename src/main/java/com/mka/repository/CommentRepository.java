@@ -12,8 +12,11 @@ import java.util.Optional;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
+    long countByCustomTopicIdAndStatus(Long customTopicId, CommentStatus status);
 
     Page<Comment> findByPostIdAndParentCommentIsNullAndStatus(Long postId, CommentStatus status, Pageable pageable);
+
+    Page<Comment> findByCustomTopicIdAndParentCommentIsNullAndStatus(Long customTopicId, CommentStatus status, Pageable pageable);
 
     List<Comment> findByParentCommentIdAndStatus(Long parentCommentId, CommentStatus status);
 

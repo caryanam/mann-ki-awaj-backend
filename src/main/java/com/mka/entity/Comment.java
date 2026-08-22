@@ -14,8 +14,12 @@ public class Comment {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
+    @JoinColumn(name = "post_id")
     private Post post;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_topic_id")
+    private CustomTopic customTopic;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -33,6 +37,9 @@ public class Comment {
 
     @Column(nullable = false, length = 10)
     private String originalLanguage = "EN";
+
+    @Column(length = 500)
+    private String imageUrl;
 
     @Column(nullable = false)
     private Long likeCount = 0L;
@@ -78,6 +85,9 @@ public class Comment {
     public Post getPost() { return post; }
     public void setPost(Post post) { this.post = post; }
 
+    public CustomTopic getCustomTopic() { return customTopic; }
+    public void setCustomTopic(CustomTopic customTopic) { this.customTopic = customTopic; }
+
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 
@@ -92,6 +102,8 @@ public class Comment {
 
     public String getOriginalLanguage() { return originalLanguage; }
     public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public Long getLikeCount() { return likeCount; }
     public void setLikeCount(Long likeCount) { this.likeCount = likeCount; }
@@ -110,11 +122,13 @@ public class Comment {
     public static class CommentBuilder {
         private Long id;
         private Post post;
+        private CustomTopic customTopic;
         private User user;
         private Comment parentComment;
         private String authorAvatar;
         private String originalContent;
         private String originalLanguage = "EN";
+        private String imageUrl;
         private Long likeCount = 0L;
         private CommentStatus status = CommentStatus.ACTIVE;
         private LocalDateTime createdAt;
@@ -122,18 +136,23 @@ public class Comment {
 
         public CommentBuilder id(Long id) { this.id = id; return this; }
         public CommentBuilder post(Post post) { this.post = post; return this; }
+        public CommentBuilder customTopic(CustomTopic customTopic) { this.customTopic = customTopic; return this; }
         public CommentBuilder user(User user) { this.user = user; return this; }
         public CommentBuilder parentComment(Comment parentComment) { this.parentComment = parentComment; return this; }
         public CommentBuilder authorAvatar(String authorAvatar) { this.authorAvatar = authorAvatar; return this; }
         public CommentBuilder originalContent(String originalContent) { this.originalContent = originalContent; return this; }
         public CommentBuilder originalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; return this; }
+        public CommentBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
         public CommentBuilder likeCount(Long likeCount) { this.likeCount = likeCount; return this; }
         public CommentBuilder status(CommentStatus status) { this.status = status; return this; }
         public CommentBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public CommentBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Comment build() {
-            return new Comment(id, post, user, parentComment, authorAvatar, originalContent, originalLanguage, likeCount, status, createdAt, updatedAt);
+            Comment comment = new Comment(id, post, user, parentComment, authorAvatar, originalContent, originalLanguage, likeCount, status, createdAt, updatedAt);
+            comment.setCustomTopic(customTopic);
+            comment.setImageUrl(imageUrl);
+            return comment;
         }
     }
 }

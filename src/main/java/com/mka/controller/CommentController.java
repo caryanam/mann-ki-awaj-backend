@@ -42,6 +42,32 @@ public class CommentController {
         );
     }
 
+    @PostMapping("/topics/{topicId}/comments")
+    @Operation(summary = "Add an opinion directly to a user-created subtopic")
+    public ResponseEntity<ApiResponse<CommentResponse>> createTopicComment(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long topicId,
+            @Valid @RequestBody CreateCommentRequest request) {
+        CommentResponse comment = commentService.createTopicComment(principal.getUsername(), topicId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<CommentResponse>builder().success(true)
+                        .message("Opinion added successfully").data(comment).build());
+    }
+
+    @GetMapping("/topics/{topicId}/comments")
+    @Operation(summary = "Get opinions for a user-created subtopic")
+    public ResponseEntity<ApiResponse<Page<CommentResponse>>> getTopicComments(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long topicId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        String email = principal != null ? principal.getUsername() : null;
+        Page<CommentResponse> comments = commentService.getCommentsByTopicId(
+                email, topicId, PageRequest.of(page, size, Sort.by("createdAt").ascending()));
+        return ResponseEntity.ok(ApiResponse.<Page<CommentResponse>>builder().success(true)
+                .message("Opinions retrieved successfully").data(comments).build());
+    }
+
     @PostMapping({"/comments/{commentId}/reply", "/comments/{commentId}/replies"})
     @Operation(summary = "Reply to an existing comment")
     public ResponseEntity<ApiResponse<CommentResponse>> replyToComment(

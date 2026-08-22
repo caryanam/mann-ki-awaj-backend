@@ -3,6 +3,7 @@ package com.mka.service.impl;
 import com.mka.dto.request.CreateCommentRequest;
 import com.mka.dto.response.CommentResponse;
 import com.mka.entity.Comment;
+import com.mka.entity.CustomTopic;
 import com.mka.entity.Post;
 import com.mka.entity.Profile;
 import com.mka.entity.User;
@@ -14,6 +15,7 @@ import com.mka.exception.ResourceNotFoundException;
 import com.mka.repository.CommentLikeRepository;
 import com.mka.repository.CommentReactionRepository;
 import com.mka.repository.CommentRepository;
+import com.mka.repository.CustomTopicRepository;
 import com.mka.repository.PostRepository;
 import com.mka.repository.ProfileRepository;
 import com.mka.repository.UserRepository;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
+    private final CustomTopicRepository customTopicRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
@@ -50,13 +53,14 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentResponse createComment(String email, Long postId, CreateCommentRequest request) {
+        validateNewComment(request);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
         Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
-        aiService.moderateContent(user, request.getContent(), "COMMENT");
+        moderateTextIfPresent(user, request);
 
         Profile userProfile = profileRepository.findByUser(user).orElse(null);
         String avatar = userProfile != null && userProfile.getAvatar() != null
@@ -96,14 +100,42 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
+    public CommentResponse createTopicComment(String email, Long topicId, CreateCommentRequest request) {
+        validateNewComment(request);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+        CustomTopic topic = customTopicRepository.findById(topicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + topicId));
+
+        moderateTextIfPresent(user, request);
+        Profile profile = profileRepository.findByUser(user).orElse(null);
+        String avatar = profile != null && profile.getAvatar() != null ? profile.getAvatar() : "avatar_default";
+
+        Comment comment = Comment.builder()
+                .customTopic(topic)
+                .user(user)
+                .authorAvatar(avatar)
+                .originalContent(request.getContent())
+                .imageUrl(request.getImageUrl())
+                .imageUrl(request.getImageUrl())
+                .originalLanguage(request.getOriginalLanguage() != null ? request.getOriginalLanguage() : "EN")
+                .status(CommentStatus.ACTIVE)
+                .likeCount(0L)
+                .build();
+        return mapToResponse(commentRepository.save(comment), user);
+    }
+
+    @Override
+    @Transactional
     public CommentResponse replyToComment(String email, Long commentId, CreateCommentRequest request) {
+        validateNewComment(request);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
         Comment parentComment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-        aiService.moderateContent(user, request.getContent(), "COMMENT");
+        moderateTextIfPresent(user, request);
 
         Profile userProfile = profileRepository.findByUser(user).orElse(null);
         String avatar = userProfile != null && userProfile.getAvatar() != null
@@ -114,10 +146,12 @@ public class CommentServiceImpl implements CommentService {
 
         Comment reply = Comment.builder()
                 .post(parentComment.getPost())
+                .customTopic(parentComment.getCustomTopic())
                 .parentComment(parentComment)
                 .user(user)
                 .authorAvatar(avatar)
                 .originalContent(request.getContent())
+                .imageUrl(request.getImageUrl())
                 .originalLanguage(request.getOriginalLanguage() != null ? request.getOriginalLanguage() : "EN")
                 .status(CommentStatus.ACTIVE)
                 .likeCount(0L)
@@ -126,8 +160,10 @@ public class CommentServiceImpl implements CommentService {
         Comment savedReply = commentRepository.save(reply);
 
         Post post = parentComment.getPost();
-        post.setCommentCount((post.getCommentCount() != null ? post.getCommentCount() : 0) + 1);
-        postRepository.save(post);
+        if (post != null) {
+            post.setCommentCount((post.getCommentCount() != null ? post.getCommentCount() : 0) + 1);
+            postRepository.save(post);
+        }
 
         if (!parentComment.getUser().getId().equals(user.getId())) {
             notificationService.createNotification(
@@ -136,7 +172,7 @@ public class CommentServiceImpl implements CommentService {
                     avatar,
                     NotificationType.REPLY,
                     senderHandle + " replied to your comment",
-                    post.getId()
+                    post != null ? post.getId() : parentComment.getCustomTopic().getId()
             );
         }
 
@@ -234,7 +270,8 @@ public class CommentServiceImpl implements CommentService {
 
             return CommentResponse.builder()
                     .id(c.getId())
-                    .postId(c.getPost().getId())
+                    .postId(c.getPost() != null ? c.getPost().getId() : null)
+                    .topicId(c.getCustomTopic() != null ? c.getCustomTopic().getId() : null)
                     .parentCommentId(c.getParentComment() != null ? c.getParentComment().getId() : null)
                     .authorId(c.getUser() != null ? c.getUser().getId() : null)
                     .username(handle)
@@ -242,6 +279,7 @@ public class CommentServiceImpl implements CommentService {
                     .authorAvatar(c.getAuthorAvatar())
                     .originalContent(c.getOriginalContent())
                     .translatedContent(translated)
+                    .imageUrl(c.getImageUrl())
                     .originalLanguage(c.getOriginalLanguage())
                     .displayLanguage(finalUserLang != null ? finalUserLang : c.getOriginalLanguage())
                     .likeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L)
@@ -260,8 +298,27 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<CommentResponse> getCommentsByTopicId(String email, Long topicId, Pageable pageable) {
+        customTopicRepository.findById(topicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + topicId));
+        User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
+        Page<Comment> comments = commentRepository.findByCustomTopicIdAndParentCommentIsNullAndStatus(
+                topicId, CommentStatus.ACTIVE, pageable);
+        return comments.map(comment -> {
+            CommentResponse response = mapToResponse(comment, user);
+            response.setReplies(commentRepository.findByParentCommentIdAndStatus(comment.getId(), CommentStatus.ACTIVE)
+                    .stream().map(reply -> mapToResponse(reply, user)).collect(Collectors.toList()));
+            return response;
+        });
+    }
+
+    @Override
     @Transactional
     public CommentResponse updateComment(String email, Long id, CreateCommentRequest request) {
+        if (request == null || request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("Comment content cannot be empty");
+        }
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
@@ -272,7 +329,7 @@ public class CommentServiceImpl implements CommentService {
             throw new IllegalArgumentException("User not authorized to update this comment");
         }
 
-        aiService.moderateContent(user, request.getContent(), "COMMENT");
+        moderateTextIfPresent(user, request);
 
         comment.setOriginalContent(request.getContent());
         Comment updated = commentRepository.save(comment);
@@ -297,9 +354,26 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.save(comment);
 
         Post post = comment.getPost();
-        long current = post.getCommentCount() != null ? post.getCommentCount() : 0;
-        post.setCommentCount(Math.max(0, current - 1));
-        postRepository.save(post);
+        if (post != null) {
+            long current = post.getCommentCount() != null ? post.getCommentCount() : 0;
+            post.setCommentCount(Math.max(0, current - 1));
+            postRepository.save(post);
+        }
+    }
+
+    private void validateNewComment(CreateCommentRequest request) {
+        boolean hasText = request != null && request.getContent() != null && !request.getContent().trim().isEmpty();
+        boolean hasImage = request != null && request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty();
+        if (!hasText && !hasImage) {
+            throw new IllegalArgumentException("Comment text or image is required");
+        }
+        if (!hasText) request.setContent("");
+    }
+
+    private void moderateTextIfPresent(User user, CreateCommentRequest request) {
+        if (request.getContent() != null && !request.getContent().trim().isEmpty()) {
+            aiService.moderateContent(user, request.getContent(), "COMMENT");
+        }
     }
 
     private CommentResponse mapToResponse(Comment comment, User currentUser) {
@@ -344,7 +418,8 @@ public class CommentServiceImpl implements CommentService {
 
         return CommentResponse.builder()
                 .id(comment.getId())
-                .postId(comment.getPost().getId())
+                .postId(comment.getPost() != null ? comment.getPost().getId() : null)
+                .topicId(comment.getCustomTopic() != null ? comment.getCustomTopic().getId() : null)
                 .parentCommentId(comment.getParentComment() != null ? comment.getParentComment().getId() : null)
                 .authorId(comment.getUser().getId())
                 .username(handle)
@@ -352,6 +427,7 @@ public class CommentServiceImpl implements CommentService {
                 .authorAvatar(comment.getAuthorAvatar())
                 .originalContent(comment.getOriginalContent())
                 .translatedContent(translated)
+                .imageUrl(comment.getImageUrl())
                 .originalLanguage(comment.getOriginalLanguage())
                 .displayLanguage(userLang != null ? userLang : comment.getOriginalLanguage())
                 .likeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0L)

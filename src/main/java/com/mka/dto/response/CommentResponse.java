@@ -18,6 +18,7 @@ public class CommentResponse {
 
     private Long id;
     private Long postId;
+    private Long topicId;
     private Long parentCommentId;
     private Long authorId;
     private String username;
@@ -27,6 +28,7 @@ public class CommentResponse {
     private String translatedContent;
     private String originalLanguage;
     private String displayLanguage;
+    private String imageUrl;
     private long likeCount;
     private Map<ReactionType, Long> reactionCounts;
     private boolean isLikedByCurrentUser;

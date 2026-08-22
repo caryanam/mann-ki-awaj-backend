@@ -2,6 +2,7 @@ package com.mka.service;
 
 import com.mka.dto.response.CommentResponse;
 import com.mka.entity.Comment;
+import com.mka.entity.CustomTopic;
 import com.mka.entity.Post;
 import com.mka.entity.Profile;
 import com.mka.entity.User;
@@ -34,6 +35,9 @@ class CommentServiceImplTest {
 
     @Mock
     private CommentRepository commentRepository;
+
+    @Mock
+    private CustomTopicRepository customTopicRepository;
 
     @Mock
     private PostRepository postRepository;
@@ -192,5 +196,57 @@ class CommentServiceImplTest {
         verify(commentRepository, never()).findByParentCommentIdInAndStatus(any(), any());
         verify(commentReactionRepository, never()).findReactionCountsByCommentIdIn(any());
         verify(commentLikeRepository, never()).findLikedCommentIdsByUserIdAndCommentIdIn(any(), any());
+    }
+
+    @Test
+    void testCreateTopicComment_PersistsWithoutPostAndKeepsLegacyDataUntouched() {
+        CustomTopic topic = CustomTopic.builder().id(200L).name("INTERSTELLAR")
+                .label("INTERSTELLAR").parentTopic(com.mka.enums.PostTopic.MOVIE_REVIEW).build();
+        com.mka.dto.request.CreateCommentRequest request =
+                new com.mka.dto.request.CreateCommentRequest("A thoughtful movie opinion", "EN");
+        request.setImageUrl("/uploads/opinion.jpg");
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
+        when(customTopicRepository.findById(200L)).thenReturn(Optional.of(topic));
+        when(profileRepository.findByUser(testUser)).thenReturn(Optional.empty());
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> {
+            Comment saved = invocation.getArgument(0);
+            saved.setId(20L);
+            return saved;
+        });
+
+        CommentResponse response = commentService.createTopicComment("user@example.com", 200L, request);
+
+        assertEquals(20L, response.getId());
+        assertEquals(200L, response.getTopicId());
+        assertNull(response.getPostId());
+        assertEquals("/uploads/opinion.jpg", response.getImageUrl());
+        verify(postRepository, never()).save(any());
+        verify(postRepository, never()).findById(any());
+    }
+
+    @Test
+    void testReplyToTopicComment_InheritsTopicWithoutPost() {
+        CustomTopic topic = CustomTopic.builder().id(200L).name("INTERSTELLAR").build();
+        Comment topicComment = Comment.builder().id(20L).customTopic(topic).user(testUser)
+                .authorAvatar("avatar_default").originalContent("Root opinion")
+                .originalLanguage("EN").status(CommentStatus.ACTIVE).build();
+        com.mka.dto.request.CreateCommentRequest request =
+                new com.mka.dto.request.CreateCommentRequest("Reply", "EN");
+
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
+        when(commentRepository.findByIdAndStatus(20L, CommentStatus.ACTIVE)).thenReturn(Optional.of(topicComment));
+        when(profileRepository.findByUser(testUser)).thenReturn(Optional.empty());
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> {
+            Comment saved = invocation.getArgument(0);
+            saved.setId(21L);
+            return saved;
+        });
+
+        CommentResponse response = commentService.replyToComment("user@example.com", 20L, request);
+
+        assertEquals(200L, response.getTopicId());
+        assertNull(response.getPostId());
+        verify(postRepository, never()).save(any());
     }
 }
