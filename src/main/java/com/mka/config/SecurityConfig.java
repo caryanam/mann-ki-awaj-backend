@@ -65,7 +65,10 @@ public class SecurityConfig {
                                 "/api/profile/*",
                                 "/api/users/*",
                                 "/api/report-reasons",
-                                "/api/mood/india"
+                                "/api/mood/india",
+                                "/api/topics",
+                                "/api/topics/*",
+                                "/api/topics/*/comments"
                         ).permitAll()
 
                         // Admin APIs

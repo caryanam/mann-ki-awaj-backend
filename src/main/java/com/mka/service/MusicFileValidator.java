@@ -16,7 +16,10 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class MusicFileValidator {
-    private static final Set<String> MP3_MIME_TYPES = Set.of("audio/mpeg", "audio/mp3");
+    private static final Set<String> ALLOWED_AUDIO_MIME_TYPES = Set.of(
+            "audio/mpeg", "audio/mp3", "audio/m4a", "audio/x-m4a", "audio/mp4", "audio/aac"
+    );
+    private static final Set<String> ALLOWED_AUDIO_EXTENSIONS = Set.of("mp3", "m4a");
     private final MusicUploadProperties properties;
 
     public ValidatedFile validateAudio(MultipartFile file) {
@@ -25,28 +28,35 @@ public class MusicFileValidator {
             throw new BadRequestException("AUDIO_FILE_TOO_LARGE");
         }
         String extension = safeExtension(file.getOriginalFilename(), "INVALID_AUDIO_FILE");
-        if (!extension.equals("mp3")) {
+        if (!ALLOWED_AUDIO_EXTENSIONS.contains(extension)) {
             throw new BadRequestException("UNSUPPORTED_AUDIO_FORMAT");
         }
         String declaredMime = normalizeMime(file.getContentType());
-        if (!MP3_MIME_TYPES.contains(declaredMime)) {
+        if (!declaredMime.isEmpty() && !ALLOWED_AUDIO_MIME_TYPES.contains(declaredMime) && !declaredMime.startsWith("audio/")) {
             throw new BadRequestException("INVALID_AUDIO_FILE");
         }
         try (InputStream input = new BufferedInputStream(file.getInputStream())) {
-            byte[] signature = input.readNBytes(4);
+            byte[] signature = input.readNBytes(8);
             boolean id3 = signature.length >= 3 && signature[0] == 'I' && signature[1] == 'D' && signature[2] == '3';
             boolean frame = signature.length >= 2
                     && (signature[0] & 0xFF) == 0xFF
                     && (signature[1] & 0xE0) == 0xE0
                     && (signature[1] & 0x18) != 0x08
                     && (signature[1] & 0x06) != 0;
-            if (!id3 && !frame) {
+            boolean m4aFtyp = signature.length >= 8
+                    && signature[4] == 'f' && signature[5] == 't' && signature[6] == 'y' && signature[7] == 'p';
+            boolean aacAdts = signature.length >= 2
+                    && (signature[0] & 0xFF) == 0xFF
+                    && (signature[1] & 0xF6) == 0xF0;
+
+            if (!id3 && !frame && !m4aFtyp && !aacAdts) {
                 throw new BadRequestException("INVALID_AUDIO_FILE");
             }
         } catch (IOException ex) {
             throw new BadRequestException("INVALID_AUDIO_FILE");
         }
-        return new ValidatedFile("mp3", "audio/mpeg", file.getSize());
+        String finalMime = extension.equals("m4a") ? "audio/m4a" : "audio/mpeg";
+        return new ValidatedFile(extension, finalMime, file.getSize());
     }
 
     public ValidatedFile validateCover(MultipartFile file) {

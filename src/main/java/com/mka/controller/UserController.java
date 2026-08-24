@@ -34,6 +34,7 @@ public class UserController {
     private final ProfileService profileService;
     private final UserMuteService userMuteService;
     private final UserHidePostService userHidePostService;
+    private final com.mka.service.UserBlockService userBlockService;
 
     private String resolveUsername(Object principalObj) {
         if (principalObj instanceof UserDetails userDetails) {
@@ -156,6 +157,34 @@ public class UserController {
         String identifier = resolveUsername(principalObj);
         List<UserHidePost> list = userHidePostService.getHiddenPosts(identifier);
         return ResponseEntity.ok(ApiResponse.success("Hidden posts retrieved successfully", list));
+    }
+
+    @PostMapping("/block/{username}")
+    @Operation(summary = "Block a user handle")
+    public ResponseEntity<ApiResponse<Void>> blockUser(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable String username) {
+        String identifier = resolveUsername(principalObj);
+        userBlockService.blockUser(identifier, username);
+        return ResponseEntity.ok(ApiResponse.success("User blocked successfully"));
+    }
+
+    @DeleteMapping("/unblock/{username}")
+    @Operation(summary = "Unblock a user handle")
+    public ResponseEntity<ApiResponse<Void>> unblockUser(
+            @AuthenticationPrincipal Object principalObj,
+            @PathVariable String username) {
+        String identifier = resolveUsername(principalObj);
+        userBlockService.unblockUser(identifier, username);
+        return ResponseEntity.ok(ApiResponse.success("User unblocked successfully"));
+    }
+
+    @GetMapping("/blocked")
+    @Operation(summary = "Get list of blocked handles for current user")
+    public ResponseEntity<ApiResponse<List<String>>> getBlockedUsers(@AuthenticationPrincipal Object principalObj) {
+        String identifier = resolveUsername(principalObj);
+        List<String> blocked = userBlockService.getBlockedUsers(identifier);
+        return ResponseEntity.ok(ApiResponse.success("Blocked users retrieved successfully", blocked));
     }
 }
 

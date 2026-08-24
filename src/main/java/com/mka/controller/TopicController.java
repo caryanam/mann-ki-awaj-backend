@@ -17,7 +17,6 @@ import com.mka.enums.PostTopic;
 @RestController
 @RequestMapping("/api/topics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class TopicController {
 
     private final CustomTopicRepository customTopicRepository;

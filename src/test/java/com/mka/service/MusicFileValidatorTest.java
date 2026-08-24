@@ -34,6 +34,14 @@ class MusicFileValidatorTest {
     }
 
     @Test
+    void acceptsM4aAudioFiles() {
+        byte[] m4aHeader = new byte[]{0, 0, 0, 32, 'f', 't', 'y', 'p', 'M', '4', 'A', ' '};
+        MusicFileValidator.ValidatedFile valid = validator.validateAudio(audio("track.m4a", "audio/m4a", m4aHeader));
+        assertThat(valid.extension()).isEqualTo("m4a");
+        assertThat(valid.mimeType()).isEqualTo("audio/m4a");
+    }
+
+    @Test
     void rejectsEmptyAudio() {
         assertCode(audio("song.mp3", "audio/mpeg", new byte[0]), "INVALID_AUDIO_FILE");
     }
