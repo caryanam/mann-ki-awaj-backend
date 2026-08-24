@@ -168,9 +168,9 @@ public class MusicUploadServiceImpl implements MusicUploadService {
                 .mood(track.getMood())
                 .genre(track.getGenre())
                 .description(track.getDescription())
-                .audioUrl("/api/admin/music/tracks/" + track.getId() + "/audio")
+                .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/admin/music/tracks/" + track.getId() + "/audio"))
                 .coverUrl(track.getCoverStorageKey() == null ? null
-                        : "/api/admin/music/tracks/" + track.getId() + "/cover")
+                        : com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/admin/music/tracks/" + track.getId() + "/cover"))
                 .durationSeconds(track.getDurationSeconds())
                 .mimeType(track.getMimeType())
                 .fileSizeBytes(track.getFileSizeBytes())

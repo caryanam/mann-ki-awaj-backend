@@ -47,8 +47,16 @@ class MusicFileValidatorTest {
     }
 
     @Test
+    void acceptsWavFlacOggOpusAndAacAudioFiles() {
+        assertThat(validator.validateAudio(audio("track.wav", "audio/wav", new byte[]{'R', 'I', 'F', 'F', 0, 0, 0, 0})).extension()).isEqualTo("wav");
+        assertThat(validator.validateAudio(audio("track.flac", "audio/flac", new byte[]{'f', 'L', 'a', 'C', 0, 0, 0, 0})).extension()).isEqualTo("flac");
+        assertThat(validator.validateAudio(audio("track.ogg", "audio/ogg", new byte[]{'O', 'g', 'g', 'S', 0, 0, 0, 0})).extension()).isEqualTo("ogg");
+        assertThat(validator.validateAudio(audio("track.opus", "audio/opus", new byte[]{'O', 'p', 'u', 's', 0, 0, 0, 0})).extension()).isEqualTo("opus");
+    }
+
+    @Test
     void rejectsUnsupportedAudioExtension() {
-        assertCode(audio("song.wav", "audio/wav", id3()), "UNSUPPORTED_AUDIO_FORMAT");
+        assertCode(audio("song.wma", "audio/x-ms-wma", id3()), "UNSUPPORTED_AUDIO_FORMAT");
     }
 
     @Test

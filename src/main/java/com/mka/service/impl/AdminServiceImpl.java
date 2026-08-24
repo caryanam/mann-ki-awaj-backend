@@ -362,7 +362,7 @@ public class AdminServiceImpl implements AdminService {
                 .displayLanguage(post.getOriginalLanguage())
                 .topic(post.getTopic())
                 .type(post.getType())
-                .imageUrl(post.getImageUrl())
+                .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
                 .likeCount(post.getLikeCount())
                 .commentCount(post.getCommentCount())
                 .reactionCounts(Collections.emptyMap())

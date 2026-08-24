@@ -141,12 +141,12 @@ public class UserMusicServiceImpl implements UserMusicService {
                 .id(track.getId()).title(track.getTitle()).artist(track.getArtistName())
                 .language(track.getLanguage()).mood(track.getMood()).genre(track.getGenre())
                 .description(track.getDescription()).status(track.getStatus())
-                .privateAudioUrl("/api/music/my-tracks/" + track.getId() + "/audio")
+                .privateAudioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/music/my-tracks/" + track.getId() + "/audio"))
                 .privateCoverUrl(track.getCoverStorageKey() == null ? null
-                        : "/api/music/my-tracks/" + track.getId() + "/cover")
-                .publicAudioUrl(published ? "/media/music/audio/" + track.getAudioStorageKey() : null)
+                        : com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/music/my-tracks/" + track.getId() + "/cover"))
+                .publicAudioUrl(published ? com.mka.util.MediaUrlUtils.toAbsoluteUrl("/media/music/audio/" + track.getAudioStorageKey()) : null)
                 .publicCoverUrl(published && track.getCoverStorageKey() != null
-                        ? "/media/music/covers/" + track.getCoverStorageKey() : null)
+                        ? com.mka.util.MediaUrlUtils.toAbsoluteUrl("/media/music/covers/" + track.getCoverStorageKey()) : null)
                 .durationSeconds(track.getDurationSeconds()).rejectionReason(track.getRejectionReason())
                 .createdAt(track.getCreatedAt()).updatedAt(track.getUpdatedAt())
                 .publishedAt(track.getPublishedAt()).build();

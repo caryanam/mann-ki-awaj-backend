@@ -17,9 +17,16 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class MusicFileValidator {
     private static final Set<String> ALLOWED_AUDIO_MIME_TYPES = Set.of(
-            "audio/mpeg", "audio/mp3", "audio/m4a", "audio/x-m4a", "audio/mp4", "audio/aac"
+            "audio/mpeg", "audio/mp3", "audio/m4a", "audio/x-m4a", "audio/mp4",
+            "audio/aac", "audio/aacp", "audio/x-aac",
+            "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave",
+            "audio/flac", "audio/x-flac",
+            "audio/ogg", "application/ogg", "audio/vorbis",
+            "audio/opus"
     );
-    private static final Set<String> ALLOWED_AUDIO_EXTENSIONS = Set.of("mp3", "m4a");
+    private static final Set<String> ALLOWED_AUDIO_EXTENSIONS = Set.of(
+            "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus"
+    );
     private final MusicUploadProperties properties;
 
     public ValidatedFile validateAudio(MultipartFile file) {
@@ -40,22 +47,37 @@ public class MusicFileValidator {
             boolean id3 = signature.length >= 3 && signature[0] == 'I' && signature[1] == 'D' && signature[2] == '3';
             boolean frame = signature.length >= 2
                     && (signature[0] & 0xFF) == 0xFF
-                    && (signature[1] & 0xE0) == 0xE0
-                    && (signature[1] & 0x18) != 0x08
-                    && (signature[1] & 0x06) != 0;
+                    && (signature[1] & 0xE0) == 0xE0;
             boolean m4aFtyp = signature.length >= 8
                     && signature[4] == 'f' && signature[5] == 't' && signature[6] == 'y' && signature[7] == 'p';
             boolean aacAdts = signature.length >= 2
                     && (signature[0] & 0xFF) == 0xFF
-                    && (signature[1] & 0xF6) == 0xF0;
+                    && (signature[1] & 0xF0) == 0xF0;
+            boolean riffWav = signature.length >= 4
+                    && signature[0] == 'R' && signature[1] == 'I' && signature[2] == 'F' && signature[3] == 'F';
+            boolean flac = signature.length >= 4
+                    && signature[0] == 'f' && signature[1] == 'L' && signature[2] == 'a' && signature[3] == 'C';
+            boolean oggOpus = signature.length >= 4
+                    && signature[0] == 'O' && signature[1] == 'g' && signature[2] == 'g' && signature[3] == 'S';
+            boolean opusHead = signature.length >= 4
+                    && signature[0] == 'O' && signature[1] == 'p' && signature[2] == 'u' && signature[3] == 's';
 
-            if (!id3 && !frame && !m4aFtyp && !aacAdts) {
+            if (!id3 && !frame && !m4aFtyp && !aacAdts && !riffWav && !flac && !oggOpus && !opusHead) {
                 throw new BadRequestException("INVALID_AUDIO_FILE");
             }
         } catch (IOException ex) {
             throw new BadRequestException("INVALID_AUDIO_FILE");
         }
-        String finalMime = extension.equals("m4a") ? "audio/m4a" : "audio/mpeg";
+        String finalMime = switch (extension) {
+            case "mp3" -> "audio/mpeg";
+            case "m4a" -> "audio/m4a";
+            case "aac" -> "audio/aac";
+            case "wav" -> "audio/wav";
+            case "flac" -> "audio/flac";
+            case "ogg" -> "audio/ogg";
+            case "opus" -> "audio/opus";
+            default -> "audio/mpeg";
+        };
         return new ValidatedFile(extension, finalMime, file.getSize());
     }
 

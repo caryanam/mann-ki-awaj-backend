@@ -100,7 +100,7 @@ public class SavedPostServiceImpl implements SavedPostService {
                 .displayLanguage(post.getOriginalLanguage())
                 .topic(post.getTopic())
                 .type(post.getType())
-                .imageUrl(post.getImageUrl())
+                .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0L)
                 .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0L)
                 .reactionCounts(reactionCounts)

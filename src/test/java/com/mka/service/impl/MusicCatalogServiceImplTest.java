@@ -41,8 +41,8 @@ class MusicCatalogServiceImplTest {
         var response = service.getPublishedTrack(7L);
 
         assertThat(response.getArtist()).isEqualTo("Artist");
-        assertThat(response.getAudioUrl()).isEqualTo("/media/music/audio/abc.mp3");
-        assertThat(response.getCoverUrl()).isEqualTo("/media/music/covers/abc.webp");
+        assertThat(response.getAudioUrl()).isEqualTo("https://api.awaazmanki.com/media/music/audio/abc.mp3");
+        assertThat(response.getCoverUrl()).isEqualTo("https://api.awaazmanki.com/media/music/covers/abc.webp");
         assertThat(response.toString()).doesNotContain("C:\\", "/var/", "storageKey", "email");
     }
 

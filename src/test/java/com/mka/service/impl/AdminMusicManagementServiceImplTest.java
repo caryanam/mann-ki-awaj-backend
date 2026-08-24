@@ -116,10 +116,9 @@ class AdminMusicManagementServiceImplTest {
         assertThat(realStorage.publicCoverExists(track.getCoverStorageKey())).isTrue();
         when(repository.findByIdAndStatus(7L, MusicTrackStatus.PUBLISHED)).thenReturn(Optional.of(track));
         assertThat(new MusicCatalogServiceImpl(repository).getPublishedTrack(7L).getAudioUrl())
-                .isEqualTo("/media/music/audio/" + track.getAudioStorageKey());
-        when(repository.findByIdAndStatus(7L, MusicTrackStatus.PUBLISHED)).thenReturn(Optional.of(track));
+                .isEqualTo("https://api.awaazmanki.com/media/music/audio/" + track.getAudioStorageKey());
         assertThat(new MusicCatalogServiceImpl(repository).getPublishedTrack(7L).getAudioUrl())
-                .isEqualTo("/media/music/audio/" + track.getAudioStorageKey());
+                .isEqualTo("https://api.awaazmanki.com/media/music/audio/" + track.getAudioStorageKey());
         MockMvc publicMedia = MockMvcBuilders.standaloneSetup(new MusicMediaController(realStorage)).build();
         MvcResult initial = publicMedia.perform(get("/media/music/audio/" + track.getAudioStorageKey())
                         .header("Range", "bytes=1-3"))

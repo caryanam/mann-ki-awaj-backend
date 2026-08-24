@@ -108,6 +108,6 @@ class UserMusicControllerTest {
 
     private UserMusicTrackResponse response(MusicTrackStatus status) {
         return UserMusicTrackResponse.builder().id(42L).title("Mine").artist("Artist")
-                .status(status).privateAudioUrl("/api/music/my-tracks/42/audio").build();
+                .status(status).privateAudioUrl("https://api.awaazmanki.com/api/music/my-tracks/42/audio").build();
     }
 }

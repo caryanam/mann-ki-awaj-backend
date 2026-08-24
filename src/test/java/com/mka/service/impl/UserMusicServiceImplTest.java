@@ -74,7 +74,7 @@ class UserMusicServiceImplTest {
         var response = service.upload("a@example.com", request(), audio(), null);
         assertThat(response.getStatus()).isEqualTo(MusicTrackStatus.PENDING_REVIEW);
         assertThat(response.getPublicAudioUrl()).isNull();
-        assertThat(response.getPrivateAudioUrl()).isEqualTo("/api/music/my-tracks/42/audio");
+        assertThat(response.getPrivateAudioUrl()).isEqualTo("https://api.awaazmanki.com/api/music/my-tracks/42/audio");
         verify(uploads).uploadCommunity(eq(owner), any(), any(), isNull());
     }
 

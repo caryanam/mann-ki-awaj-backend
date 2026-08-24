@@ -69,8 +69,8 @@ public class MusicCatalogServiceImpl implements MusicCatalogService {
                 .genre(track.getGenre())
                 .description(track.getDescription())
                 .coverUrl(track.getCoverStorageKey() == null ? null
-                        : "/media/music/covers/" + track.getCoverStorageKey())
-                .audioUrl("/media/music/audio/" + track.getAudioStorageKey())
+                        : com.mka.util.MediaUrlUtils.toAbsoluteUrl("/media/music/covers/" + track.getCoverStorageKey()))
+                .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/media/music/audio/" + track.getAudioStorageKey()))
                 .durationSeconds(track.getDurationSeconds())
                 .featured(track.getFeatured())
                 .publishedAt(track.getPublishedAt())
