@@ -245,11 +245,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.clearContext();
 
-            response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
-            );
-
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            String origin = request.getHeader("Origin");
+            if (origin != null && !origin.isBlank()) {
+                response.setHeader("Access-Control-Allow-Origin", origin);
+                response.setHeader("Access-Control-Allow-Credentials", "true");
+                response.setHeader("Access-Control-Allow-Headers", "*");
+                response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+            }
 
             response.getWriter().write("""
                     {

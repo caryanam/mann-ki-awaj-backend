@@ -96,8 +96,13 @@ public class SecurityConfig {
                             response.setStatus(401);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
-                            response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin") != null ? request.getHeader("Origin") : "*");
-                            response.setHeader("Access-Control-Allow-Credentials", "true");
+                            String origin = request.getHeader("Origin");
+                            if (origin != null && !origin.isBlank()) {
+                                response.setHeader("Access-Control-Allow-Origin", origin);
+                                response.setHeader("Access-Control-Allow-Credentials", "true");
+                                response.setHeader("Access-Control-Allow-Headers", "*");
+                                response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+                            }
 
                             response.getWriter().write("""
                                     {
@@ -113,8 +118,13 @@ public class SecurityConfig {
                             response.setStatus(403);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
-                            response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin") != null ? request.getHeader("Origin") : "*");
-                            response.setHeader("Access-Control-Allow-Credentials", "true");
+                            String origin = request.getHeader("Origin");
+                            if (origin != null && !origin.isBlank()) {
+                                response.setHeader("Access-Control-Allow-Origin", origin);
+                                response.setHeader("Access-Control-Allow-Credentials", "true");
+                                response.setHeader("Access-Control-Allow-Headers", "*");
+                                response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+                            }
 
                             response.getWriter().write("""
                                     {
@@ -142,11 +152,20 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allowed origins for local development and production environments (using patterns for all domain variations & ports)
-        configuration.setAllowedOriginPatterns(List.of(
+        // Allowed origins for production and local environments
+        configuration.setAllowedOrigins(List.of(
                 "https://awaazmanki.com",
                 "https://www.awaazmanki.com",
                 "https://api.awaazmanki.com",
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:8080",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000"
+        ));
+
+        // Allowed origin patterns for all subdomains & ports
+        configuration.setAllowedOriginPatterns(List.of(
                 "https://*.awaazmanki.com",
                 "http://localhost:*",
                 "http://127.0.0.1:*"
@@ -170,7 +189,7 @@ public class SecurityConfig {
                  "Accept-Ranges",
                  "Content-Range",
                  "Access-Control-Allow-Origin",
-                "Access-Control-Allow-Credentials"
+                 "Access-Control-Allow-Credentials"
         ));
 
         // Required for authenticated cross-origin requests
