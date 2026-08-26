@@ -36,6 +36,7 @@ public class PostResponse {
     private PostType type;
 
     private String imageUrl;
+    private String audioUrl;
     private String movieName;
     private Integer movieRating;
     private Boolean isSpoiler;

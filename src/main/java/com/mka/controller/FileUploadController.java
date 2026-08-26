@@ -90,6 +90,11 @@ public class FileUploadController {
                 if (filename.toLowerCase().endsWith(".png")) contentType = "image/png";
                 else if (filename.toLowerCase().endsWith(".webp")) contentType = "image/webp";
                 else if (filename.toLowerCase().endsWith(".gif")) contentType = "image/gif";
+                else if (filename.toLowerCase().endsWith(".wav")) contentType = "audio/wav";
+                else if (filename.toLowerCase().endsWith(".mp3")) contentType = "audio/mpeg";
+                else if (filename.toLowerCase().endsWith(".m4a")) contentType = "audio/mp4";
+                else if (filename.toLowerCase().endsWith(".ogg")) contentType = "audio/ogg";
+                else if (filename.toLowerCase().endsWith(".webm")) contentType = "audio/webm";
                 else contentType = "image/jpeg";
             }
 

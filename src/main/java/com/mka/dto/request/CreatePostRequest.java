@@ -38,6 +38,9 @@ public class CreatePostRequest {
     @Size(max = 1024, message = "Image URL cannot exceed 1024 characters")
     private String imageUrl;
 
+    @Size(max = 1024, message = "Audio URL cannot exceed 1024 characters")
+    private String audioUrl;
+
     @Size(max = 10, message = "Original language code cannot exceed 10 characters")
     private String originalLanguage;
 

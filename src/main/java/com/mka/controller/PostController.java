@@ -45,6 +45,62 @@ public class PostController {
         );
     }
 
+    @PostMapping(value = "/voice-note", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Publish a voice note post with audio file attachment")
+    public ResponseEntity<ApiResponse<PostResponse>> publishVoiceNote(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "caption", required = false) String caption,
+            @RequestParam(value = "topic", required = false) String topic,
+            @RequestParam(value = "mood", required = false) String mood) {
+
+        String audioUrl = null;
+        if (file != null && !file.isEmpty()) {
+            try {
+                java.io.File uploadsDir = new java.io.File("uploads");
+                if (!uploadsDir.exists()) {
+                    uploadsDir.mkdirs();
+                }
+                String ext = ".wav";
+                String orig = file.getOriginalFilename();
+                if (orig != null && orig.contains(".")) {
+                    ext = orig.substring(orig.lastIndexOf("."));
+                }
+                String fileName = java.util.UUID.randomUUID().toString() + ext;
+                java.io.File destFile = new java.io.File(uploadsDir, fileName).getAbsoluteFile();
+                try (java.io.InputStream is = file.getInputStream()) {
+                    java.nio.file.Files.copy(is, destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                audioUrl = "/uploads/" + fileName;
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Could not save uploaded audio file: " + e.getMessage());
+            }
+        }
+
+        String postTitle = (title != null && !title.isBlank()) ? title.trim() : "Voice Note";
+        String postContent = (caption != null && !caption.isBlank()) ? caption.trim() : postTitle;
+
+        CreatePostRequest request = CreatePostRequest.builder()
+                .title(postTitle)
+                .content(postContent)
+                .caption(caption)
+                .topic(topic != null && !topic.isBlank() ? topic : "GENERAL")
+                .mood(mood != null && !mood.isBlank() ? mood : "NEUTRAL")
+                .type(com.mka.enums.PostType.VOICE_NOTE)
+                .audioUrl(audioUrl)
+                .build();
+
+        PostResponse post = postService.createPost(principal.getUsername(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.<PostResponse>builder()
+                        .success(true)
+                        .message("Voice note published successfully")
+                        .data(post)
+                        .build()
+        );
+    }
+
     @GetMapping
     @Operation(summary = "Get post feed with optional topic filter and automatic AI translation")
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getFeed(

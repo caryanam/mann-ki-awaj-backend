@@ -57,6 +57,9 @@ public class Post {
     @Column(length = 255)
     private String imageUrl;
 
+    @Column(name = "audio_url", length = 1024)
+    private String audioUrl;
+
     @Column(length = 150)
     private String movieName;
 
@@ -162,6 +165,9 @@ public class Post {
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
+    public String getAudioUrl() { return audioUrl; }
+    public void setAudioUrl(String audioUrl) { this.audioUrl = audioUrl; }
+
     public String getMovieName() { return movieName; }
     public void setMovieName(String movieName) { this.movieName = movieName; }
 
@@ -206,6 +212,7 @@ public class Post {
         private String subtopic;
         private PostType type = PostType.TEXT;
         private String imageUrl;
+        private String audioUrl;
         private String movieName;
         private Integer movieRating;
         private Boolean isSpoiler = false;
@@ -230,6 +237,7 @@ public class Post {
         public PostBuilder subtopic(String subtopic) { this.subtopic = subtopic; return this; }
         public PostBuilder type(PostType type) { this.type = type; return this; }
         public PostBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
+        public PostBuilder audioUrl(String audioUrl) { this.audioUrl = audioUrl; return this; }
         public PostBuilder movieName(String movieName) { this.movieName = movieName; return this; }
         public PostBuilder movieRating(Integer movieRating) { this.movieRating = movieRating; return this; }
         public PostBuilder isSpoiler(Boolean isSpoiler) { this.isSpoiler = isSpoiler; return this; }
@@ -257,6 +265,7 @@ public class Post {
             post.setType(type);
 
             post.setImageUrl(imageUrl);
+            post.setAudioUrl(audioUrl);
             post.setMovieName(movieName);
             post.setMovieRating(movieRating);
             post.setIsSpoiler(isSpoiler);
