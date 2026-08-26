@@ -19,6 +19,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -55,6 +56,8 @@ class MusicMediaDeliveryTest {
         performAudio(get("/media/music/audio/test.mp3"))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("max-age=31536000")))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("immutable")))
                 .andExpect(header().longValue(HttpHeaders.CONTENT_LENGTH, AUDIO.length))
                 .andExpect(content().contentType("audio/mpeg"))
                 .andExpect(content().bytes(AUDIO));
@@ -147,6 +150,25 @@ class MusicMediaDeliveryTest {
                 .andExpect(header().longValue(HttpHeaders.CONTENT_LENGTH, AUDIO.length))
                 .andExpect(content().contentType("audio/mpeg"))
                 .andExpect(content().bytes(new byte[0]));
+    }
+
+    @Test
+    void deliversEveryAudioFormatAcceptedByTheUploadValidator() throws Exception {
+        var formats = java.util.Map.of(
+                "test.mp3", "audio/mpeg",
+                "test.m4a", "audio/mp4",
+                "test.aac", "audio/aac",
+                "test.wav", "audio/wav",
+                "test.flac", "audio/flac",
+                "test.ogg", "audio/ogg",
+                "test.opus", "audio/opus"
+        );
+        for (var format : formats.entrySet()) {
+            Files.write(tempDir.resolve("music/audio/" + format.getKey()), AUDIO);
+            performAudio(get("/media/music/audio/" + format.getKey()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(format.getValue()));
+        }
     }
 
     private void assertRange(String range, int start, int end) throws Exception {

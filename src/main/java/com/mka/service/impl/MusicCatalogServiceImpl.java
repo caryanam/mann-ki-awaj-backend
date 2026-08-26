@@ -36,7 +36,10 @@ public class MusicCatalogServiceImpl implements MusicCatalogService {
             specification = specification.and((root, ignored, cb) -> cb.equal(root.get("language"), language));
         }
         if (mood != null) {
-            specification = specification.and((root, ignored, cb) -> cb.equal(root.get("mood"), mood));
+            specification = specification.and((root, querySpec, cb) -> {
+                querySpec.distinct(true);
+                return cb.equal(root.join("moods"), mood);
+            });
         }
         if (genre != null && !genre.isBlank()) {
             specification = specification.and((root, ignored, cb) ->
@@ -65,7 +68,7 @@ public class MusicCatalogServiceImpl implements MusicCatalogService {
                 .title(track.getTitle())
                 .artist(track.getArtistName())
                 .language(track.getLanguage())
-                .mood(track.getMood())
+                .moods(track.getMoods())
                 .genre(track.getGenre())
                 .description(track.getDescription())
                 .coverUrl(track.getCoverStorageKey() == null ? null

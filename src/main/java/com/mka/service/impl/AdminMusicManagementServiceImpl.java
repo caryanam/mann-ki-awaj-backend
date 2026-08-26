@@ -1,6 +1,7 @@
 package com.mka.service.impl;
 
 import com.mka.dto.request.MusicTrackUpdateRequest;
+import com.mka.dto.request.MusicTrackApprovalRequest;
 import com.mka.dto.response.AdminMusicTrackResponse;
 import com.mka.dto.response.AdminMusicUploaderResponse;
 import com.mka.entity.MusicTrack;
@@ -54,8 +55,10 @@ public class AdminMusicManagementServiceImpl implements AdminMusicManagementServ
         }
         if (language != null) specification = specification.and((root, ignored, cb) ->
                 cb.equal(root.get("language"), language));
-        if (mood != null) specification = specification.and((root, ignored, cb) ->
-                cb.equal(root.get("mood"), mood));
+        if (mood != null) specification = specification.and((root, querySpec, cb) -> {
+            querySpec.distinct(true);
+            return cb.equal(root.join("moods"), mood);
+        });
         if (genre != null && !genre.isBlank()) specification = specification.and((root, ignored, cb) ->
                 cb.equal(cb.lower(root.get("genre")), genre.trim().toLowerCase()));
         if (featured != null) specification = specification.and((root, ignored, cb) ->
@@ -75,7 +78,7 @@ public class AdminMusicManagementServiceImpl implements AdminMusicManagementServ
         track.setTitle(request.getTitle());
         track.setArtistName(request.getArtistName());
         track.setLanguage(request.getLanguage());
-        track.setMood(request.getMood());
+        track.setMoods(request.getMoods());
         track.setGenre(request.getGenre());
         track.setDescription(request.getDescription());
         track.setFeatured(request.getFeatured());
@@ -125,9 +128,10 @@ public class AdminMusicManagementServiceImpl implements AdminMusicManagementServ
 
     @Override
     @Transactional
-    public AdminMusicTrackResponse approve(Long id) {
+    public AdminMusicTrackResponse approve(Long id, MusicTrackApprovalRequest request) {
         MusicTrack track = lockedActiveTrack(id);
         requirePendingCommunity(track);
+        track.setMoods(request.getMoods());
         publishTrack(track);
         try {
             track.setReviewedAt(LocalDateTime.now());
@@ -301,7 +305,7 @@ public class AdminMusicManagementServiceImpl implements AdminMusicManagementServ
     private AdminMusicTrackResponse toResponse(MusicTrack track) {
         return AdminMusicTrackResponse.builder()
                 .id(track.getId()).title(track.getTitle()).artist(track.getArtistName())
-                .language(track.getLanguage()).mood(track.getMood()).genre(track.getGenre())
+                .language(track.getLanguage()).moods(track.getMoods()).genre(track.getGenre())
                 .description(track.getDescription())
                 .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/admin/music/tracks/" + track.getId() + "/audio"))
                 .coverUrl(track.getCoverStorageKey() == null ? null

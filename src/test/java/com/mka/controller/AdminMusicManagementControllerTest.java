@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.RequestBuilder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -66,12 +67,13 @@ class AdminMusicManagementControllerTest {
         when(service.update(eq(7L), any())).thenReturn(response);
         when(service.publish(7L)).thenReturn(response);
         when(service.unpublish(7L)).thenReturn(response);
-        when(service.approve(7L)).thenReturn(response);
+        when(service.approve(eq(7L), any())).thenReturn(response);
         when(service.reject(eq(7L), anyString())).thenReturn(response);
         mockMvc.perform(validPut()).andExpect(status().isOk());
         mockMvc.perform(post("/api/admin/music/tracks/7/publish")).andExpect(status().isOk());
         mockMvc.perform(post("/api/admin/music/tracks/7/unpublish")).andExpect(status().isOk());
-        mockMvc.perform(post("/api/admin/music/tracks/7/approve")).andExpect(status().isOk());
+        mockMvc.perform(post("/api/admin/music/tracks/7/approve").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"moods\":[\"ROMANTIC\",\"CALM\"]}")).andExpect(status().isOk());
         mockMvc.perform(post("/api/admin/music/tracks/7/reject").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"reason\":\"Rights could not be confirmed\"}")).andExpect(status().isOk());
         mockMvc.perform(delete("/api/admin/music/tracks/7")).andExpect(status().isNoContent());
@@ -145,7 +147,7 @@ class AdminMusicManagementControllerTest {
     @WithMockUser(username = "admin@example.com", roles = "ADMIN")
     void metadataUpdateRejectsNegativeSortOrderBeforeServiceCall() throws Exception {
         mockMvc.perform(put("/api/admin/music/tracks/7").contentType(MediaType.APPLICATION_JSON).content("""
-                {"title":"Song","artistName":"Artist","language":"HI","mood":"CALM",
+                {"title":"Song","artistName":"Artist","language":"HI","moods":["CALM"],
                  "featured":false,"sortOrder":-1}
                 """))
                 .andExpect(status().isBadRequest())
@@ -170,14 +172,14 @@ class AdminMusicManagementControllerTest {
 
     private RequestBuilder validPut() {
         return put("/api/admin/music/tracks/7").contentType(MediaType.APPLICATION_JSON).content("""
-                {"title":"Song","artistName":"Artist","language":"HI","mood":"CALM",
+                {"title":"Song","artistName":"Artist","language":"HI","moods":["CALM"],
                  "genre":"Folk","description":"Description","featured":false,"sortOrder":0}
                 """);
     }
 
     private AdminMusicTrackResponse response(MusicTrackStatus status) {
         return AdminMusicTrackResponse.builder().id(7L).title("Song").artist("Artist")
-                .language(LanguageCode.HI).mood(MusicMood.CALM).status(status)
+                .language(LanguageCode.HI).moods(Set.of(MusicMood.CALM)).status(status)
                 .featured(false).sortOrder(0).build();
     }
 }

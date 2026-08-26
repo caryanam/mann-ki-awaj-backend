@@ -2,8 +2,10 @@ package com.mka.controller;
 
 import com.mka.dto.request.MusicTrackUpdateRequest;
 import com.mka.dto.request.MusicTrackRejectRequest;
+import com.mka.dto.request.MusicTrackApprovalRequest;
 import com.mka.dto.response.AdminMusicTrackResponse;
 import com.mka.dto.response.ApiResponse;
+import com.mka.dto.response.MusicPageResponse;
 import com.mka.enums.LanguageCode;
 import com.mka.enums.MusicMood;
 import com.mka.enums.MusicTrackStatus;
@@ -33,7 +35,7 @@ public class AdminMusicManagementController {
     private final AdminMusicManagementService service;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<AdminMusicTrackResponse>>> list(
+    public ResponseEntity<ApiResponse<MusicPageResponse<AdminMusicTrackResponse>>> list(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) MusicTrackStatus status,
             @RequestParam(required = false) LanguageCode language,
@@ -46,7 +48,7 @@ public class AdminMusicManagementController {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Page<AdminMusicTrackResponse> tracks = service.list(query, status, language, mood, genre, featured,
                 PageRequest.of(safePage, safeSize, DEFAULT_SORT));
-        return ResponseEntity.ok(ApiResponse.success("Admin music tracks retrieved", tracks));
+        return ResponseEntity.ok(ApiResponse.success("Admin music tracks retrieved", MusicPageResponse.from(tracks)));
     }
 
     @GetMapping("/{id}")
@@ -71,8 +73,9 @@ public class AdminMusicManagementController {
     }
 
     @PostMapping("/{id}/approve")
-    public ResponseEntity<ApiResponse<AdminMusicTrackResponse>> approve(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Community music track approved", service.approve(id)));
+    public ResponseEntity<ApiResponse<AdminMusicTrackResponse>> approve(@PathVariable Long id,
+            @Valid @RequestBody MusicTrackApprovalRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Community music track approved", service.approve(id, request)));
     }
 
     @PostMapping("/{id}/reject")

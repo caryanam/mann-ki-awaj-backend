@@ -1,6 +1,7 @@
 package com.mka.service;
 
 import com.mka.dto.request.MusicTrackUpdateRequest;
+import com.mka.dto.request.MusicTrackApprovalRequest;
 import com.mka.dto.response.AdminMusicTrackResponse;
 import com.mka.enums.LanguageCode;
 import com.mka.enums.MusicMood;
@@ -15,7 +16,7 @@ public interface AdminMusicManagementService {
     AdminMusicTrackResponse update(Long id, MusicTrackUpdateRequest request);
     AdminMusicTrackResponse publish(Long id);
     AdminMusicTrackResponse unpublish(Long id);
-    AdminMusicTrackResponse approve(Long id);
+    AdminMusicTrackResponse approve(Long id, MusicTrackApprovalRequest request);
     AdminMusicTrackResponse reject(Long id, String reason);
     void delete(Long id);
     MusicStorageService.StoredMusicResource getPrivateAudio(Long id);

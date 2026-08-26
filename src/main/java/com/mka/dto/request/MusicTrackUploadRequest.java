@@ -5,6 +5,8 @@ import com.mka.enums.MusicMood;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.util.Set;
+
 @Data
 public class MusicTrackUploadRequest {
     @NotBlank @Size(max = 150)
@@ -16,8 +18,8 @@ public class MusicTrackUploadRequest {
     @NotNull
     private LanguageCode language;
 
-    @NotNull
-    private MusicMood mood;
+    @NotEmpty
+    private Set<@NotNull MusicMood> moods;
 
     @Size(max = 80)
     private String genre;

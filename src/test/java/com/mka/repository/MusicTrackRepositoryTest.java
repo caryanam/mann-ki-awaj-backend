@@ -14,6 +14,7 @@ import com.mka.service.impl.AdminMusicManagementServiceImpl;
 import com.mka.service.MusicStorageService;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -96,7 +97,7 @@ class MusicTrackRepositoryTest {
         other.setTitle("Village Song");
         other.setArtistName("Folk Ensemble");
         other.setLanguage(LanguageCode.HI);
-        other.setMood(MusicMood.ENERGETIC);
+        other.setMoods(Set.of(MusicMood.ENERGETIC));
         other.setGenre("Folk");
         musicTrackRepository.save(other);
 
@@ -130,7 +131,7 @@ class MusicTrackRepositoryTest {
         published.setTitle("Live Anthem");
         published.setArtistName("Public Band");
         published.setLanguage(LanguageCode.HI);
-        published.setMood(MusicMood.ENERGETIC);
+        published.setMoods(Set.of(MusicMood.ENERGETIC));
         published.setGenre("Folk");
         musicTrackRepository.save(published);
 
@@ -138,7 +139,7 @@ class MusicTrackRepositoryTest {
         unpublished.setTitle("Archive Song");
         unpublished.setArtistName("Hidden Voice");
         unpublished.setLanguage(LanguageCode.EN);
-        unpublished.setMood(MusicMood.FOCUS);
+        unpublished.setMoods(Set.of(MusicMood.FOCUS));
         unpublished.setGenre("Jazz");
         musicTrackRepository.save(unpublished);
         musicTrackRepository.save(track("admin-deleted.mp3", MusicTrackStatus.DELETED));
@@ -158,12 +159,39 @@ class MusicTrackRepositoryTest {
         assertThat(service.list(null, MusicTrackStatus.DELETED, null, null, null, null, page)).isEmpty();
     }
 
+    @Test
+    void multipleMoodsPersistWithoutDuplicatesAndFilterWithCorrectPageCount() {
+        MusicTrack multiMood = track("multi-mood.mp3", MusicTrackStatus.PUBLISHED);
+        multiMood.setMoods(Set.of(MusicMood.ROMANTIC, MusicMood.CALM));
+        musicTrackRepository.saveAndFlush(multiMood);
+
+        MusicTrack pending = track("pending-romantic.mp3", MusicTrackStatus.PENDING_REVIEW);
+        pending.setMoods(Set.of(MusicMood.ROMANTIC, MusicMood.SAD));
+        musicTrackRepository.saveAndFlush(pending);
+
+        var service = new MusicCatalogServiceImpl(musicTrackRepository);
+        var romantic = service.getPublishedTracks(null, null, MusicMood.ROMANTIC,
+                null, null, PageRequest.of(0, 10));
+        var calm = service.getPublishedTracks(null, null, MusicMood.CALM,
+                null, null, PageRequest.of(0, 10));
+        var energetic = service.getPublishedTracks(null, null, MusicMood.ENERGETIC,
+                null, null, PageRequest.of(0, 10));
+
+        assertThat(romantic.getTotalElements()).isEqualTo(1);
+        assertThat(romantic.getTotalPages()).isEqualTo(1);
+        assertThat(romantic.getContent()).extracting("id").containsExactly(multiMood.getId());
+        assertThat(calm.getTotalElements()).isEqualTo(1);
+        assertThat(energetic.getTotalElements()).isZero();
+        assertThat(musicTrackRepository.findById(multiMood.getId()).orElseThrow().getMoods())
+                .containsExactlyInAnyOrder(MusicMood.ROMANTIC, MusicMood.CALM);
+    }
+
     private MusicTrack track(String audioKey, MusicTrackStatus status) {
         return MusicTrack.builder()
                 .title(" Test Track ")
                 .artistName(" Test Artist ")
                 .language(LanguageCode.MR)
-                .mood(MusicMood.CALM)
+                .moods(Set.of(MusicMood.CALM))
                 .genre("Lo-fi")
                 .description("Test-only metadata")
                 .audioStorageKey(audioKey)

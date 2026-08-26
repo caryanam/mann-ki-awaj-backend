@@ -70,7 +70,7 @@ class AdminMusicUploadSecurityTest {
                         .file(audio)
                         .param("artistName", "Artist")
                         .param("language", "HI")
-                        .param("mood", "CALM"))
+                        .param("moods", "CALM"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").exists());
         verify(musicUploadService, org.mockito.Mockito.never()).upload(any(), any(), any(), any());
@@ -96,7 +96,7 @@ class AdminMusicUploadSecurityTest {
                 .param("title", "Song")
                 .param("artistName", "Artist")
                 .param("language", "HI")
-                .param("mood", "CALM")
+                .param("moods", "CALM")
                 .param("featured", "false")
                 .param("sortOrder", "0");
     }

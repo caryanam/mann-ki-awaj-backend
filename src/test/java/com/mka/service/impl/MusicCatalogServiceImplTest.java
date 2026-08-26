@@ -16,6 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,8 +42,8 @@ class MusicCatalogServiceImplTest {
         var response = service.getPublishedTrack(7L);
 
         assertThat(response.getArtist()).isEqualTo("Artist");
-        assertThat(response.getAudioUrl()).isEqualTo("https://api.awaazmanki.com/media/music/audio/abc.mp3");
-        assertThat(response.getCoverUrl()).isEqualTo("https://api.awaazmanki.com/media/music/covers/abc.webp");
+        assertThat(response.getAudioUrl()).isEqualTo("/media/music/audio/abc.mp3");
+        assertThat(response.getCoverUrl()).isEqualTo("/media/music/covers/abc.webp");
         assertThat(response.toString()).doesNotContain("C:\\", "/var/", "storageKey", "email");
     }
 
@@ -83,7 +84,7 @@ class MusicCatalogServiceImplTest {
                 .title("Love Song")
                 .artistName("Artist")
                 .language(LanguageCode.MR)
-                .mood(MusicMood.CALM)
+                .moods(Set.of(MusicMood.CALM))
                 .genre("Lo-fi")
                 .description("Description")
                 .audioStorageKey("abc.mp3")

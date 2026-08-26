@@ -28,7 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class UserMusicServiceImpl implements UserMusicService {
+public class
+UserMusicServiceImpl implements UserMusicService {
     private final MusicTrackRepository tracks;
     private final UserRepository users;
     private final MusicUploadService uploads;
@@ -83,7 +84,7 @@ public class UserMusicServiceImpl implements UserMusicService {
         track.setTitle(request.getTitle());
         track.setArtistName(request.getArtistName());
         track.setLanguage(request.getLanguage());
-        track.setMood(request.getMood());
+        track.setMoods(request.getMoods());
         track.setGenre(request.getGenre());
         track.setDescription(request.getDescription());
         try {
@@ -139,7 +140,7 @@ public class UserMusicServiceImpl implements UserMusicService {
         boolean published = track.getStatus() == MusicTrackStatus.PUBLISHED;
         return UserMusicTrackResponse.builder()
                 .id(track.getId()).title(track.getTitle()).artist(track.getArtistName())
-                .language(track.getLanguage()).mood(track.getMood()).genre(track.getGenre())
+                .language(track.getLanguage()).moods(track.getMoods()).genre(track.getGenre())
                 .description(track.getDescription()).status(track.getStatus())
                 .privateAudioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/music/my-tracks/" + track.getId() + "/audio"))
                 .privateCoverUrl(track.getCoverStorageKey() == null ? null

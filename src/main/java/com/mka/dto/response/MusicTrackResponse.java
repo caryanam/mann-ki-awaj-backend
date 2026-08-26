@@ -5,6 +5,7 @@ import com.mka.enums.MusicMood;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -15,7 +16,7 @@ public class MusicTrackResponse {
     private String title;
     private String artist;
     private LanguageCode language;
-    private MusicMood mood;
+    private Set<MusicMood> moods;
     private String genre;
     private String description;
     private String coverUrl;

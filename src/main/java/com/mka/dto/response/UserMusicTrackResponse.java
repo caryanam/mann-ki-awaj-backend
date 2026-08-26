@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -19,7 +20,7 @@ public class UserMusicTrackResponse {
     private String title;
     private String artist;
     private LanguageCode language;
-    private MusicMood mood;
+    private Set<MusicMood> moods;
     private String genre;
     private String description;
     private MusicTrackStatus status;

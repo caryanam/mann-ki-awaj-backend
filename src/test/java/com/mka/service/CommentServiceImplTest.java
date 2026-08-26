@@ -220,7 +220,7 @@ class CommentServiceImplTest {
         assertEquals(20L, response.getId());
         assertEquals(200L, response.getTopicId());
         assertNull(response.getPostId());
-        assertEquals("https://api.awaazmanki.com/uploads/opinion.jpg", response.getImageUrl());
+        assertEquals("/uploads/opinion.jpg", response.getImageUrl());
         verify(postRepository, never()).save(any());
         verify(postRepository, never()).findById(any());
     }

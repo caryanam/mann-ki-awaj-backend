@@ -4,6 +4,7 @@ import com.mka.dto.request.UserMusicTrackUpdateRequest;
 import com.mka.dto.request.UserMusicTrackUploadRequest;
 import com.mka.dto.response.ApiResponse;
 import com.mka.dto.response.UserMusicTrackResponse;
+import com.mka.dto.response.MusicPageResponse;
 import com.mka.enums.MusicTrackStatus;
 import com.mka.service.MusicMediaResponseFactory;
 import com.mka.service.UserMusicService;
@@ -42,16 +43,17 @@ public class UserMusicController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<UserMusicTrackResponse>>> list(
+    public ResponseEntity<ApiResponse<MusicPageResponse<UserMusicTrackResponse>>> list(
             @RequestParam(required = false) MusicTrackStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        return ResponseEntity.ok(ApiResponse.success("My music tracks retrieved", service.list(
+        Page<UserMusicTrackResponse> tracks = service.list(
                 principal.getName(), status, PageRequest.of(safePage, safeSize,
-                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))))));
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+        return ResponseEntity.ok(ApiResponse.success("My music tracks retrieved", MusicPageResponse.from(tracks)));
     }
 
     @GetMapping("/{id}")

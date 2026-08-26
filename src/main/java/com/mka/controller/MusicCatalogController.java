@@ -2,6 +2,7 @@ package com.mka.controller;
 
 import com.mka.dto.response.ApiResponse;
 import com.mka.dto.response.MusicTrackResponse;
+import com.mka.dto.response.MusicPageResponse;
 import com.mka.enums.LanguageCode;
 import com.mka.enums.MusicMood;
 import com.mka.service.MusicCatalogService;
@@ -31,7 +32,7 @@ public class MusicCatalogController {
 
     @GetMapping
     @Operation(summary = "Browse published music with optional search and filters")
-    public ResponseEntity<ApiResponse<Page<MusicTrackResponse>>> getTracks(
+    public ResponseEntity<ApiResponse<MusicPageResponse<MusicTrackResponse>>> getTracks(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) LanguageCode language,
             @RequestParam(required = false) MusicMood mood,
@@ -43,7 +44,7 @@ public class MusicCatalogController {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Page<MusicTrackResponse> tracks = musicCatalogService.getPublishedTracks(
                 query, language, mood, genre, featured, PageRequest.of(safePage, safeSize, DEFAULT_SORT));
-        return ResponseEntity.ok(ApiResponse.success("Published music catalog retrieved", tracks));
+        return ResponseEntity.ok(ApiResponse.success("Published music catalog retrieved", MusicPageResponse.from(tracks)));
     }
 
     @GetMapping("/{id}")

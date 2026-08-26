@@ -9,11 +9,21 @@ import org.springframework.util.unit.DataSize;
 @Configuration
 public class FileUploadConfig {
 
+    private final MusicUploadProperties musicUploadProperties;
+
+    public FileUploadConfig(MusicUploadProperties musicUploadProperties) {
+        this.musicUploadProperties = musicUploadProperties;
+    }
+
     @Bean
     public MultipartConfigElement multipartConfigElement() {
         MultipartConfigFactory factory = new MultipartConfigFactory();
-        factory.setMaxFileSize(DataSize.ofMegabytes(50));
-        factory.setMaxRequestSize(DataSize.ofMegabytes(50));
+        long largestFile = Math.max(musicUploadProperties.getMaxAudioSize().toBytes(),
+                musicUploadProperties.getMaxCoverSize().toBytes());
+        long requestSize = musicUploadProperties.getMaxAudioSize().toBytes()
+                + musicUploadProperties.getMaxCoverSize().toBytes() + DataSize.ofMegabytes(1).toBytes();
+        factory.setMaxFileSize(DataSize.ofBytes(largestFile));
+        factory.setMaxRequestSize(DataSize.ofBytes(requestSize));
         return factory.createMultipartConfig();
     }
 }

@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -107,7 +108,7 @@ class MusicUploadServiceImplTest {
         });
         UserMusicTrackUploadRequest request = new UserMusicTrackUploadRequest();
         request.setTitle("My original"); request.setArtistName("Community artist");
-        request.setLanguage(LanguageCode.MR); request.setMood(MusicMood.FOCUS);
+        request.setLanguage(LanguageCode.MR); request.setMoods(Set.of(MusicMood.FOCUS));
         request.setOriginalWorkConfirmed(true); request.setRightsConfirmed(true);
         MusicTrack saved = service.uploadCommunity(user(), request, mp3(), null);
         assertThat(saved.getStatus()).isEqualTo(MusicTrackStatus.PENDING_REVIEW);
@@ -171,7 +172,7 @@ class MusicUploadServiceImplTest {
         request.setTitle("Safe Song");
         request.setArtistName("Artist");
         request.setLanguage(LanguageCode.HI);
-        request.setMood(MusicMood.CALM);
+        request.setMoods(Set.of(MusicMood.CALM));
         request.setGenre("Acoustic");
         request.setDescription("A draft upload");
         request.setFeatured(true);

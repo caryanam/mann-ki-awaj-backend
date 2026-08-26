@@ -24,10 +24,14 @@ import java.util.UUID;
 @Service
 public class LocalMusicStorageService implements MusicStorageService {
 
-    private static final Map<String, String> AUDIO_TYPES = Map.of(
-            "mp3", "audio/mpeg",
-            "m4a", "audio/mp4",
-            "aac", "audio/aac"
+    private static final Map<String, String> AUDIO_TYPES = Map.ofEntries(
+            Map.entry("mp3", "audio/mpeg"),
+            Map.entry("m4a", "audio/mp4"),
+            Map.entry("aac", "audio/aac"),
+            Map.entry("wav", "audio/wav"),
+            Map.entry("flac", "audio/flac"),
+            Map.entry("ogg", "audio/ogg"),
+            Map.entry("opus", "audio/opus")
     );
     private static final Map<String, String> COVER_TYPES = Map.of(
             "jpg", "image/jpeg",

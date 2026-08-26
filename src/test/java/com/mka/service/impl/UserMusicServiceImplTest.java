@@ -27,6 +27,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +75,7 @@ class UserMusicServiceImplTest {
         var response = service.upload("a@example.com", request(), audio(), null);
         assertThat(response.getStatus()).isEqualTo(MusicTrackStatus.PENDING_REVIEW);
         assertThat(response.getPublicAudioUrl()).isNull();
-        assertThat(response.getPrivateAudioUrl()).isEqualTo("https://api.awaazmanki.com/api/music/my-tracks/42/audio");
+        assertThat(response.getPrivateAudioUrl()).isEqualTo("/api/music/my-tracks/42/audio");
         verify(uploads).uploadCommunity(eq(owner), any(), any(), isNull());
     }
 
@@ -169,7 +170,7 @@ class UserMusicServiceImplTest {
 
     private MusicTrack track(User user, MusicTrackStatus status) {
         MusicTrack track = MusicTrack.builder().title("Original").artistName("Artist")
-                .language(LanguageCode.MR).mood(MusicMood.CALM).audioStorageKey("private.mp3")
+                .language(LanguageCode.MR).moods(Set.of(MusicMood.CALM)).audioStorageKey("private.mp3")
                 .coverStorageKey("cover.png").mimeType("audio/mpeg").fileSizeBytes(8L)
                 .status(status).source(MusicTrackSource.COMMUNITY).originalWorkConfirmed(true)
                 .rightsConfirmed(true).featured(false).sortOrder(0).uploadedBy(user)
@@ -182,7 +183,7 @@ class UserMusicServiceImplTest {
     private UserMusicTrackUploadRequest request() {
         UserMusicTrackUploadRequest request = new UserMusicTrackUploadRequest();
         request.setTitle("Original"); request.setArtistName("Artist");
-        request.setLanguage(LanguageCode.MR); request.setMood(MusicMood.CALM);
+        request.setLanguage(LanguageCode.MR); request.setMoods(Set.of(MusicMood.CALM));
         request.setOriginalWorkConfirmed(true); request.setRightsConfirmed(true);
         return request;
     }
@@ -190,7 +191,7 @@ class UserMusicServiceImplTest {
     private UserMusicTrackUpdateRequest update() {
         UserMusicTrackUpdateRequest request = new UserMusicTrackUpdateRequest();
         request.setTitle("Updated"); request.setArtistName("Updated artist");
-        request.setLanguage(LanguageCode.HI); request.setMood(MusicMood.FOCUS);
+        request.setLanguage(LanguageCode.HI); request.setMoods(Set.of(MusicMood.FOCUS));
         request.setGenre("Lo-fi"); request.setDescription("Updated description");
         return request;
     }

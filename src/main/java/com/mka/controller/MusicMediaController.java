@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class MusicMediaController {
 
-    private static final CacheControl MEDIA_CACHE = CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic();
+    private static final CacheControl MEDIA_CACHE = CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable();
     private final MusicStorageService storageService;
 
     @GetMapping("/media/music/audio/{filename:.+}")

@@ -57,7 +57,7 @@ class UserMusicControllerTest {
                 new byte[]{'I','D','3',0});
         mockMvc.perform(multipart("/api/music/my-tracks").file(audio)
                         .param("title", "Mine").param("artistName", "Artist")
-                        .param("language", "MR").param("mood", "CALM")
+                        .param("language", "MR").param("moods", "CALM")
                         .param("originalWorkConfirmed", "true").param("rightsConfirmed", "true"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("PENDING_REVIEW"));
@@ -76,7 +76,7 @@ class UserMusicControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].status").value("REJECTED"));
         mockMvc.perform(get("/api/music/my-tracks/42")).andExpect(status().isOk());
         mockMvc.perform(put("/api/music/my-tracks/42").contentType("application/json").content("""
-                {"title":"Mine","artistName":"Artist","language":"MR","mood":"CALM"}
+                {"title":"Mine","artistName":"Artist","language":"MR","moods":["CALM"]}
                 """)).andExpect(status().isOk());
         mockMvc.perform(delete("/api/music/my-tracks/42")).andExpect(status().isNoContent());
         verify(service).delete("user@example.com", 42L);
@@ -108,6 +108,6 @@ class UserMusicControllerTest {
 
     private UserMusicTrackResponse response(MusicTrackStatus status) {
         return UserMusicTrackResponse.builder().id(42L).title("Mine").artist("Artist")
-                .status(status).privateAudioUrl("https://api.awaazmanki.com/api/music/my-tracks/42/audio").build();
+                .status(status).privateAudioUrl("/api/music/my-tracks/42/audio").build();
     }
 }

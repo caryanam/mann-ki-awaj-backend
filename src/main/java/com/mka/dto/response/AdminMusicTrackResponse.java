@@ -7,6 +7,7 @@ import com.mka.enums.MusicTrackSource;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -17,7 +18,7 @@ public class AdminMusicTrackResponse {
     private String title;
     private String artist;
     private LanguageCode language;
-    private MusicMood mood;
+    private Set<MusicMood> moods;
     private String genre;
     private String description;
     private String coverUrl;

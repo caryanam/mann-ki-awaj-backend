@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -52,7 +53,14 @@ class MusicCatalogControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].id").value(7))
                 .andExpect(jsonPath("$.data.content[0].artist").value("Artist"))
-                .andExpect(jsonPath("$.data.content[0].audioUrl").value("https://api.awaazmanki.com/media/music/audio/abc.mp3"));
+                .andExpect(jsonPath("$.data.content[0].audioUrl").value("/media/music/audio/abc.mp3"));
+        mockMvc.perform(get("/api/music/tracks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").isNumber())
+                .andExpect(jsonPath("$.data.first").isBoolean())
+                .andExpect(jsonPath("$.data.last").isBoolean());
 
         verify(service).getPublishedTracks(eq("love"), eq(LanguageCode.MR), eq(MusicMood.CALM),
                 eq("Lo-fi"), eq(true), any(Pageable.class));
@@ -80,7 +88,7 @@ class MusicCatalogControllerTest {
         mockMvc.perform(get("/api/music/tracks/7"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Track"))
-                .andExpect(jsonPath("$.data.coverUrl").value("https://api.awaazmanki.com/media/music/covers/abc.webp"));
+                .andExpect(jsonPath("$.data.coverUrl").value("/media/music/covers/abc.webp"));
     }
 
     @Test
@@ -94,9 +102,9 @@ class MusicCatalogControllerTest {
     private MusicTrackResponse response() {
         return MusicTrackResponse.builder()
                 .id(7L).title("Track").artist("Artist")
-                .language(LanguageCode.MR).mood(MusicMood.CALM).genre("Lo-fi")
-                .audioUrl("https://api.awaazmanki.com/media/music/audio/abc.mp3")
-                .coverUrl("https://api.awaazmanki.com/media/music/covers/abc.webp")
+                .language(LanguageCode.MR).moods(Set.of(MusicMood.CALM)).genre("Lo-fi")
+                .audioUrl("/media/music/audio/abc.mp3")
+                .coverUrl("/media/music/covers/abc.webp")
                 .durationSeconds(120).featured(true)
                 .build();
     }

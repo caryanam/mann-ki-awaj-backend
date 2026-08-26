@@ -3,6 +3,7 @@ package com.mka.service.impl;
 import com.mka.config.MusicStorageProperties;
 import com.mka.controller.MusicMediaController;
 import com.mka.dto.request.MusicTrackUpdateRequest;
+import com.mka.dto.request.MusicTrackApprovalRequest;
 import com.mka.entity.MusicTrack;
 import com.mka.entity.User;
 import com.mka.enums.LanguageCode;
@@ -31,6 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -93,7 +95,7 @@ class AdminMusicManagementServiceImplTest {
         assertThat(response.getTitle()).isEqualTo("Updated title");
         assertThat(track.getArtistName()).isEqualTo("Updated artist");
         assertThat(track.getLanguage()).isEqualTo(LanguageCode.MR);
-        assertThat(track.getMood()).isEqualTo(MusicMood.ENERGETIC);
+        assertThat(track.getMoods()).containsExactly(MusicMood.ENERGETIC);
         assertThat(track.getGenre()).isEqualTo("Rock");
         assertThat(track.getFeatured()).isTrue();
         assertThat(track.getSortOrder()).isEqualTo(8);
@@ -116,9 +118,9 @@ class AdminMusicManagementServiceImplTest {
         assertThat(realStorage.publicCoverExists(track.getCoverStorageKey())).isTrue();
         when(repository.findByIdAndStatus(7L, MusicTrackStatus.PUBLISHED)).thenReturn(Optional.of(track));
         assertThat(new MusicCatalogServiceImpl(repository).getPublishedTrack(7L).getAudioUrl())
-                .isEqualTo("https://api.awaazmanki.com/media/music/audio/" + track.getAudioStorageKey());
+                .isEqualTo("/media/music/audio/" + track.getAudioStorageKey());
         assertThat(new MusicCatalogServiceImpl(repository).getPublishedTrack(7L).getAudioUrl())
-                .isEqualTo("https://api.awaazmanki.com/media/music/audio/" + track.getAudioStorageKey());
+                .isEqualTo("/media/music/audio/" + track.getAudioStorageKey());
         MockMvc publicMedia = MockMvcBuilders.standaloneSetup(new MusicMediaController(realStorage)).build();
         MvcResult initial = publicMedia.perform(get("/media/music/audio/" + track.getAudioStorageKey())
                         .header("Range", "bytes=1-3"))
@@ -313,9 +315,11 @@ class AdminMusicManagementServiceImplTest {
         MusicTrack track = privateTrack(MusicTrackStatus.PENDING_REVIEW, true);
         track.setSource(MusicTrackSource.COMMUNITY);
         when(repository.findActiveByIdForUpdate(7L)).thenReturn(Optional.of(track));
-        var response = service(realStorage).approve(7L);
+        var response = service(realStorage).approve(7L, approval(MusicMood.ROMANTIC, MusicMood.SAD));
         assertThat(response.getStatus()).isEqualTo(MusicTrackStatus.PUBLISHED);
         assertThat(response.getSource()).isEqualTo(MusicTrackSource.COMMUNITY);
+        assertThat(response.getMoods()).containsExactlyInAnyOrder(MusicMood.ROMANTIC, MusicMood.SAD);
+        assertThat(track.getMoods()).containsExactlyInAnyOrder(MusicMood.ROMANTIC, MusicMood.SAD);
         assertThat(response.getReviewedAt()).isNotNull();
         assertThat(realStorage.publicAudioExists(track.getAudioStorageKey())).isTrue();
         assertThat(realStorage.publicCoverExists(track.getCoverStorageKey())).isTrue();
@@ -340,7 +344,7 @@ class AdminMusicManagementServiceImplTest {
                 track(MusicTrackStatus.PUBLISHED, "published.mp3", null),
                 track(MusicTrackStatus.REJECTED, "rejected.mp3", null))) {
             when(repository.findActiveByIdForUpdate(7L)).thenReturn(Optional.of(invalid));
-            assertThatThrownBy(() -> service(realStorage).approve(7L))
+            assertThatThrownBy(() -> service(realStorage).approve(7L, approval(MusicMood.CALM)))
                     .isInstanceOf(MusicConflictException.class)
                     .hasMessage("MUSIC_TRACK_NOT_PENDING_REVIEW");
         }
@@ -354,7 +358,7 @@ class AdminMusicManagementServiceImplTest {
         LocalMusicStorageService failedStorage = spy(realStorage);
         doThrow(new RuntimeException("cover promotion failed")).when(failedStorage)
                 .publishCover(track.getCoverStorageKey());
-        assertThatThrownBy(() -> service(failedStorage).approve(7L))
+        assertThatThrownBy(() -> service(failedStorage).approve(7L, approval(MusicMood.CALM)))
                 .isInstanceOf(MusicOperationException.class);
         assertThat(track.getStatus()).isEqualTo(MusicTrackStatus.PENDING_REVIEW);
         assertThat(realStorage.publicAudioExists(track.getAudioStorageKey())).isFalse();
@@ -386,7 +390,7 @@ class AdminMusicManagementServiceImplTest {
                 .password("encoded").role(Role.ADMIN).build();
         user.setId(2L);
         MusicTrack track = MusicTrack.builder().title("Song").artistName("Artist")
-                .language(LanguageCode.HI).mood(MusicMood.CALM).genre("Folk")
+                .language(LanguageCode.HI).moods(Set.of(MusicMood.CALM)).genre("Folk")
                 .audioStorageKey(audioKey).coverStorageKey(coverKey).mimeType("audio/mpeg")
                 .fileSizeBytes(5L).status(status).featured(false).sortOrder(0).uploadedBy(user).build();
         track.setId(7L);
@@ -398,9 +402,15 @@ class AdminMusicManagementServiceImplTest {
     private MusicTrackUpdateRequest update() {
         MusicTrackUpdateRequest request = new MusicTrackUpdateRequest();
         request.setTitle("Updated title"); request.setArtistName("Updated artist");
-        request.setLanguage(LanguageCode.MR); request.setMood(MusicMood.ENERGETIC);
+        request.setLanguage(LanguageCode.MR); request.setMoods(Set.of(MusicMood.ENERGETIC));
         request.setGenre("Rock"); request.setDescription("Updated description");
         request.setFeatured(true); request.setSortOrder(8);
+        return request;
+    }
+
+    private MusicTrackApprovalRequest approval(MusicMood... moods) {
+        MusicTrackApprovalRequest request = new MusicTrackApprovalRequest();
+        request.setMoods(Set.of(moods));
         return request;
     }
 

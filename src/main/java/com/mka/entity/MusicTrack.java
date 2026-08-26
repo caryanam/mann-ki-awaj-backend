@@ -12,8 +12,11 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "music_tracks",
@@ -23,7 +26,6 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_music_tracks_status", columnList = "status"),
                 @Index(name = "idx_music_tracks_status_created", columnList = "status,created_at"),
                 @Index(name = "idx_music_tracks_status_language", columnList = "status,language"),
-                @Index(name = "idx_music_tracks_status_mood", columnList = "status,mood"),
                 @Index(name = "idx_music_tracks_status_featured", columnList = "status,is_featured")
                 ,@Index(name = "idx_music_tracks_status_source", columnList = "status,source")
                 ,@Index(name = "idx_music_tracks_uploader_status", columnList = "uploaded_by,status")
@@ -50,10 +52,20 @@ public class MusicTrack extends BaseEntity {
     @Column(nullable = false, length = 10)
     private LanguageCode language;
 
-    @NotNull
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "music_track_moods",
+            joinColumns = @JoinColumn(name = "track_id", nullable = false),
+            uniqueConstraints = @UniqueConstraint(name = "uk_music_track_moods_track_mood",
+                    columnNames = {"track_id", "mood"}),
+            indexes = {
+                    @Index(name = "idx_music_track_moods_mood_track", columnList = "mood,track_id"),
+                    @Index(name = "idx_music_track_moods_track", columnList = "track_id")
+            })
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private MusicMood mood;
+    @Column(name = "mood", nullable = false, length = 20)
+    @BatchSize(size = 50)
+    @Builder.Default
+    private Set<MusicMood> moods = new LinkedHashSet<>();
 
     @Size(max = 80)
     @Column(length = 80)
@@ -146,8 +158,12 @@ public class MusicTrack extends BaseEntity {
         coverStorageKey = coverStorageKey == null ? null : requireStorageKey(coverStorageKey);
 
         rejectionReason = trimToNull(rejectionReason);
-        if (language == null || mood == null || status == null || source == null || uploadedBy == null) {
-            throw new IllegalStateException("language, mood, status, source and uploadedBy are required");
+        moods = moods == null ? new LinkedHashSet<>() : new LinkedHashSet<>(moods);
+        if (moods.isEmpty() || moods.contains(null)) {
+            throw new IllegalStateException("at least one non-null music mood is required");
+        }
+        if (language == null || status == null || source == null || uploadedBy == null) {
+            throw new IllegalStateException("language, status, source and uploadedBy are required");
         }
         if (originalWorkConfirmed == null || rightsConfirmed == null) {
             throw new IllegalStateException("rights declarations must not be null");
@@ -161,6 +177,14 @@ public class MusicTrack extends BaseEntity {
         if (sortOrder == null || sortOrder < 0) {
             throw new IllegalStateException("sortOrder must be non-negative");
         }
+    }
+
+    public Set<MusicMood> getMoods() {
+        return Set.copyOf(moods == null ? Set.of() : moods);
+    }
+
+    public void setMoods(Set<MusicMood> moods) {
+        this.moods = moods == null ? new LinkedHashSet<>() : new LinkedHashSet<>(moods);
     }
 
     private static String requireTrimmed(String value, String field) {

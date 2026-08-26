@@ -11,7 +11,9 @@ import com.mka.config.MusicUploadProperties;
 @EnableConfigurationProperties({MusicStorageProperties.class, MusicUploadProperties.class})
 @EnableJpaAuditing
 @org.springframework.scheduling.annotation.EnableScheduling
-public class MannKiAavajApplication {
+public class
+
+MannKiAavajApplication {
 
     public static void main(String[] args) {
         org.springframework.context.ConfigurableApplicationContext context = SpringApplication.run(MannKiAavajApplication.class, args);

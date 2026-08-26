@@ -58,7 +58,7 @@ public class MusicUploadServiceImpl implements MusicUploadService {
                                         .build())))
                         .orElseThrow(() -> new ResourceNotFoundException("Authenticated admin not found")));
         MusicTrack saved = storeTrack(uploader, request.getTitle(), request.getArtistName(), request.getLanguage(),
-                request.getMood(), request.getGenre(), request.getDescription(), audio, cover,
+                request.getMoods(), request.getGenre(), request.getDescription(), audio, cover,
                 MusicTrackStatus.DRAFT, MusicTrackSource.PLATFORM, false, false,
                 Boolean.TRUE.equals(request.getFeatured()), request.getSortOrder() == null ? 0 : request.getSortOrder());
         return toResponse(saved);
@@ -69,13 +69,13 @@ public class MusicUploadServiceImpl implements MusicUploadService {
     public MusicTrack uploadCommunity(User uploader, UserMusicTrackUploadRequest request,
                                       MultipartFile audio, MultipartFile cover) {
         return storeTrack(uploader, request.getTitle(), request.getArtistName(), request.getLanguage(),
-                request.getMood(), request.getGenre(), request.getDescription(), audio, cover,
+                request.getMoods(), request.getGenre(), request.getDescription(), audio, cover,
                 MusicTrackStatus.PENDING_REVIEW, MusicTrackSource.COMMUNITY,
                 true, true, false, 0);
     }
 
     private MusicTrack storeTrack(User uploader, String title, String artistName,
-                                  com.mka.enums.LanguageCode language, com.mka.enums.MusicMood mood,
+                                  com.mka.enums.LanguageCode language, java.util.Set<com.mka.enums.MusicMood> moods,
                                   String genre, String description, MultipartFile audio, MultipartFile cover,
                                   MusicTrackStatus status, MusicTrackSource source,
                                   boolean originalWorkConfirmed, boolean rightsConfirmed,
@@ -107,7 +107,7 @@ public class MusicUploadServiceImpl implements MusicUploadService {
                     .title(title)
                     .artistName(artistName)
                     .language(language)
-                    .mood(mood)
+                    .moods(moods)
                     .genre(genre)
                     .description(description)
                     .audioStorageKey(privateAudioKey)
@@ -165,7 +165,7 @@ public class MusicUploadServiceImpl implements MusicUploadService {
                 .title(track.getTitle())
                 .artist(track.getArtistName())
                 .language(track.getLanguage())
-                .mood(track.getMood())
+                .moods(track.getMoods())
                 .genre(track.getGenre())
                 .description(track.getDescription())
                 .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl("/api/admin/music/tracks/" + track.getId() + "/audio"))
