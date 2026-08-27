@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -99,6 +100,22 @@ class AuthServiceImplTest {
                 .emailVerified(true)
                 .mobileVerified(true)
                 .build();
+    }
+
+    @Test
+    void deleteAccountVerifiesCredentialsAndSoftDeletesUser() {
+        DeleteAccountRequest request = DeleteAccountRequest.builder()
+                .email(" USER@EXAMPLE.COM ")
+                .password("correct-password")
+                .build();
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
+
+        authService.deleteAccount(request);
+
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        assertFalse(testUser.getActive());
+        assertTrue(testUser.getDeleted());
+        verify(userRepository).save(testUser);
     }
 
     @Test

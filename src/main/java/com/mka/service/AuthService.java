@@ -14,4 +14,6 @@ public interface AuthService {
     void verifyForgotPasswordOtp(VerifyForgotPasswordOtpRequest request);
 
     void resetPassword(ResetPasswordRequest request);
+
+    void deleteAccount(DeleteAccountRequest request);
 }

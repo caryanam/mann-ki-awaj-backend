@@ -277,6 +277,23 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public void deleteAccount(DeleteAccountRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (!user.getActive() || user.getDeleted()) {
+            throw new UnauthorizedException("User account is inactive or deleted");
+        }
+
+        authenticateCredentials(user.getEmail(), request.getPassword());
+        user.setActive(false);
+        user.setDeleted(true);
+        userRepository.save(user);
+    }
+
     private void authenticateCredentials(String email, String password) {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));

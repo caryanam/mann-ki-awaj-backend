@@ -64,6 +64,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Password reset successfully. You can now login with your new password."));
     }
 
+    @PostMapping("/delete-account")
+    @Operation(summary = "Delete an account after verifying its email and password")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@Valid @RequestBody DeleteAccountRequest request) {
+        authService.deleteAccount(request);
+        return ResponseEntity.ok(ApiResponse.success("Account deletion requested successfully"));
+    }
+
     @PostMapping("/verify-email")
     @Operation(summary = "Verify Email OTP")
     public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
