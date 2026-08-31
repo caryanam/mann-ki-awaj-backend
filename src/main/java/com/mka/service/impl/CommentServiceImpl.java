@@ -187,6 +187,21 @@ public class CommentServiceImpl implements CommentService {
         Page<Comment> rootComments = commentRepository.findByPostIdAndParentCommentIsNullAndStatus(
                 postId, CommentStatus.ACTIVE, pageable);
 
+        return mapCommentPageInBatch(user, rootComments);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CommentResponse> getCommentsByTopicId(String email, Long topicId, Pageable pageable) {
+        customTopicRepository.findById(topicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + topicId));
+        User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
+        Page<Comment> rootComments = commentRepository.findByCustomTopicIdAndParentCommentIsNullAndStatus(
+                topicId, CommentStatus.ACTIVE, pageable);
+        return mapCommentPageInBatch(user, rootComments);
+    }
+
+    private Page<CommentResponse> mapCommentPageInBatch(User user, Page<Comment> rootComments) {
         if (rootComments.isEmpty()) {
             return rootComments.map(c -> null);
         }
@@ -294,22 +309,6 @@ public class CommentServiceImpl implements CommentService {
             List<Comment> childReplies = repliesByParentId.getOrDefault(root.getId(), List.of());
             resp.setReplies(childReplies.stream().map(mapCommentInBatch).collect(Collectors.toList()));
             return resp;
-        });
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<CommentResponse> getCommentsByTopicId(String email, Long topicId, Pageable pageable) {
-        customTopicRepository.findById(topicId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + topicId));
-        User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
-        Page<Comment> comments = commentRepository.findByCustomTopicIdAndParentCommentIsNullAndStatus(
-                topicId, CommentStatus.ACTIVE, pageable);
-        return comments.map(comment -> {
-            CommentResponse response = mapToResponse(comment, user);
-            response.setReplies(commentRepository.findByParentCommentIdAndStatus(comment.getId(), CommentStatus.ACTIVE)
-                    .stream().map(reply -> mapToResponse(reply, user)).collect(Collectors.toList()));
-            return response;
         });
     }
 

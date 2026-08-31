@@ -112,7 +112,13 @@ public class PostController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
 
-        Sort sort = direction.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort sort = Sort.by(sortDirection, sortBy);
+        if (!"id".equalsIgnoreCase(sortBy)) {
+            sort = sort.and(Sort.by(sortDirection, "id"));
+        }
         String email = principal != null ? principal.getUsername() : null;
         Page<PostResponse> feed = postService.getFeed(email, topic, PageRequest.of(page, size, sort));
 

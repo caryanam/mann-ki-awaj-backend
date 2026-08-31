@@ -1,6 +1,7 @@
 package com.mka.dto.response;
 
 import com.mka.enums.PostTopic;
+import com.mka.enums.PostStatus;
 import com.mka.enums.PostType;
 import com.mka.enums.ReactionType;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,10 @@ public class PostResponse {
 
     private Long id;
     private String postId;
+    private String feedItemId;
+    private String feedItemType;
+    private Long sourceId;
+    private Long topicId;
     private Long authorId;
     private String username;
     private String title;
@@ -34,6 +39,7 @@ public class PostResponse {
     private String topic;
     private String subtopic;
     private PostType type;
+    private PostStatus status;
 
     private String imageUrl;
     private String audioUrl;

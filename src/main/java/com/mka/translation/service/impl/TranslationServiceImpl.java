@@ -23,6 +23,15 @@ public class TranslationServiceImpl implements TranslationService {
 
     private static final Logger log = LoggerFactory.getLogger(TranslationServiceImpl.class);
 
+    private static final int MAX_CACHE_SIZE = 5000;
+    private final java.util.Map<String, String> translationCache = new java.util.LinkedHashMap<String, String>(MAX_CACHE_SIZE, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<String, String> eldest) {
+            return size() > MAX_CACHE_SIZE;
+        }
+    };
+    private final java.util.Map<String, String> syncCache = java.util.Collections.synchronizedMap(translationCache);
+
     private final OpenAITranslationProvider openAiProvider;
 
     public TranslationServiceImpl(OpenAITranslationProvider openAiProvider) {
@@ -68,6 +77,19 @@ public class TranslationServiceImpl implements TranslationService {
                     .build();
         }
 
+        String cacheKey = srcLang.toUpperCase() + ":" + tgtLang.toUpperCase() + ":" + cleanText;
+        String cachedText = syncCache.get(cacheKey);
+        if (cachedText != null) {
+            return TranslationResponse.builder()
+                    .originalText(cleanText)
+                    .translatedText(cachedText)
+                    .sourceLanguage(srcLang)
+                    .targetLanguage(tgtLang)
+                    .engine("cache")
+                    .cached(true)
+                    .build();
+        }
+
         TranslationRequest request = TranslationRequest.builder()
                 .text(cleanText)
                 .sourceLanguage(srcLang)
@@ -84,6 +106,7 @@ public class TranslationServiceImpl implements TranslationService {
                 long duration = System.currentTimeMillis() - startTime;
                 if (response != null && response.getTranslatedText() != null && !response.getTranslatedText().isBlank()) {
                     log.info("OpenAI Translation completed successfully: [{}] -> [{}] in {}ms", srcLang, tgtLang, duration);
+                    syncCache.put(cacheKey, response.getTranslatedText());
                     return response;
                 }
             } catch (Exception ex) {
@@ -98,6 +121,7 @@ public class TranslationServiceImpl implements TranslationService {
         String sanitizedText = sanitizeEncodedSymbols(cleanText);
         String gtxTranslated = translateViaGoogleGtx(sanitizedText, tgtLang);
         if (gtxTranslated != null && !gtxTranslated.isBlank() && !gtxTranslated.equals(sanitizedText)) {
+            syncCache.put(cacheKey, gtxTranslated);
             return TranslationResponse.builder()
                     .originalText(sanitizedText)
                     .translatedText(gtxTranslated)

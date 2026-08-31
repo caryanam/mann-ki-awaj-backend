@@ -3,14 +3,19 @@ package com.mka.service.impl;
 import com.mka.dto.request.CreatePostRequest;
 import com.mka.dto.request.UpdatePostRequest;
 import com.mka.dto.response.PostResponse;
+import com.mka.entity.Comment;
 import com.mka.entity.Post;
 import com.mka.entity.Profile;
 import com.mka.entity.User;
+import com.mka.enums.CommentStatus;
 import com.mka.enums.PostStatus;
 import com.mka.enums.PostTopic;
 import com.mka.enums.PostType;
 import com.mka.enums.ReactionType;
 import com.mka.exception.ResourceNotFoundException;
+import com.mka.repository.CommentLikeRepository;
+import com.mka.repository.CommentReactionRepository;
+import com.mka.repository.CommentRepository;
 import com.mka.repository.CustomTopicRepository;
 import com.mka.repository.PostLikeRepository;
 
@@ -27,11 +32,15 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,6 +65,9 @@ public class PostServiceImpl implements PostService {
     private final AiService aiService;
     private final TranslationService translationService;
     private final CustomTopicRepository customTopicRepository;
+    private final CommentRepository commentRepository;
+    private final CommentReactionRepository commentReactionRepository;
+    private final CommentLikeRepository commentLikeRepository;
 
 
     @Override
@@ -163,20 +175,29 @@ public class PostServiceImpl implements PostService {
         Profile profile = user != null ? profileRepository.findByUser(user).orElse(null) : null;
         String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
 
+        long requestedEnd = pageable.getOffset() + pageable.getPageSize();
+        int candidateSize = (int) Math.min(Integer.MAX_VALUE, requestedEnd);
+        Pageable candidatePageable = PageRequest.of(0, Math.max(candidateSize, 1), pageable.getSort());
+
         Page<Post> posts;
         if (topic != null && !topic.isBlank()) {
-            Page<Post> mainTopicPosts = postRepository.findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), pageable);
+            Page<Post> mainTopicPosts = postRepository.findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), candidatePageable);
             if (mainTopicPosts.hasContent()) {
                 posts = mainTopicPosts;
             } else {
-                posts = postRepository.findByStatusAndSubtopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), pageable);
+                posts = postRepository.findByStatusAndSubtopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), candidatePageable);
             }
         } else {
-            posts = postRepository.findByStatus(PostStatus.ACTIVE, pageable);
+            posts = postRepository.findByStatus(PostStatus.ACTIVE, candidatePageable);
         }
 
+        Page<Comment> topicOpinions = topic != null && !topic.isBlank()
+                ? commentRepository.findByCustomTopicNameIgnoreCaseAndParentCommentIsNullAndStatus(
+                        topic.trim(), CommentStatus.ACTIVE, candidatePageable)
+                : commentRepository.findByCustomTopicIsNotNullAndParentCommentIsNullAndStatus(
+                        CommentStatus.ACTIVE, candidatePageable);
 
-        if (posts.isEmpty()) {
+        if (posts.isEmpty() && topicOpinions.isEmpty()) {
             return Page.empty(pageable);
         }
 
@@ -232,7 +253,8 @@ public class PostServiceImpl implements PostService {
         final Set<Long> finalLikedPosts = likedPostIdsSet;
         final Set<Long> finalSavedPosts = savedPostIdsSet;
 
-        return posts.map(p -> mapPostToResponseBatch(
+        List<PostResponse> combined = new ArrayList<>(posts.getNumberOfElements() + topicOpinions.getNumberOfElements());
+        combined.addAll(posts.map(p -> mapPostToResponseBatch(
                 p,
                 currentUser,
                 targetLanguage,
@@ -241,7 +263,22 @@ public class PostServiceImpl implements PostService {
                 finalUserReactions.get(p.getId()),
                 finalLikedPosts.contains(p.getId()),
                 finalSavedPosts.contains(p.getId())
-        ));
+        )).getContent());
+        combined.addAll(mapTopicOpinionsToFeed(topicOpinions.getContent(), user, userLang));
+
+        Comparator<PostResponse> newestFirst = Comparator
+                .comparing(PostResponse::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(PostResponse::getFeedItemId, Comparator.nullsLast(Comparator.reverseOrder()));
+        if (pageable.getSort().getOrderFor("createdAt") != null
+                && pageable.getSort().getOrderFor("createdAt").isAscending()) {
+            newestFirst = newestFirst.reversed();
+        }
+        combined.sort(newestFirst);
+
+        int fromIndex = (int) Math.min(pageable.getOffset(), combined.size());
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), combined.size());
+        long totalElements = posts.getTotalElements() + topicOpinions.getTotalElements();
+        return new PageImpl<>(combined.subList(fromIndex, toIndex), pageable, totalElements);
     }
 
     @Override
@@ -370,6 +407,9 @@ public class PostServiceImpl implements PostService {
         return PostResponse.builder()
                 .id(post.getId())
                 .postId(post.getFormattedPostId())
+                .feedItemId("POST_" + post.getId())
+                .feedItemType("POST")
+                .sourceId(post.getId())
                 .authorId(post.getUser() != null ? post.getUser().getId() : null)
                 .username(handle)
                 .title(post.getTitle())
@@ -384,6 +424,7 @@ public class PostServiceImpl implements PostService {
                 .displayLanguage(targetLanguage != null ? targetLanguage : post.getOriginalLanguage())
                 .topic(post.getTopic())
                 .type(post.getType())
+                .status(post.getStatus())
                 .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
                 .movieName(post.getMovieName())
                 .movieRating(post.getMovieRating())
@@ -453,6 +494,9 @@ public class PostServiceImpl implements PostService {
         return PostResponse.builder()
                 .id(post.getId())
                 .postId(post.getFormattedPostId())
+                .feedItemId("POST_" + post.getId())
+                .feedItemType("POST")
+                .sourceId(post.getId())
                 .authorId(post.getUser() != null ? post.getUser().getId() : null)
                 .username(handle)
                 .title(post.getTitle())
@@ -467,6 +511,7 @@ public class PostServiceImpl implements PostService {
                 .displayLanguage(targetLanguage != null ? targetLanguage : post.getOriginalLanguage())
                 .topic(post.getTopic())
                 .type(post.getType())
+                .status(post.getStatus())
                 .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
                 .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getAudioUrl()))
                 .movieName(post.getMovieName())
@@ -481,6 +526,100 @@ public class PostServiceImpl implements PostService {
                 .isSavedByCurrentUser(isSaved)
                 .createdAt(post.getCreatedAt())
                 .build();
+    }
+
+    private List<PostResponse> mapTopicOpinionsToFeed(List<Comment> comments, User currentUser, String targetLanguage) {
+        if (comments.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> commentIds = comments.stream().map(Comment::getId).toList();
+        List<Long> authorIds = comments.stream()
+                .filter(c -> c.getUser() != null && c.getUser().getId() != null)
+                .map(c -> c.getUser().getId())
+                .distinct()
+                .toList();
+        Map<Long, Profile> profiles = authorIds.isEmpty() ? Collections.emptyMap()
+                : profileRepository.findByUserIdIn(authorIds).stream()
+                .filter(p -> p.getUser() != null && p.getUser().getId() != null)
+                .collect(Collectors.toMap(p -> p.getUser().getId(), p -> p, (left, right) -> left));
+
+        Map<Long, Map<ReactionType, Long>> reactionCounts = new HashMap<>();
+        for (CommentReactionRepository.CommentReactionCountProjection count
+                : commentReactionRepository.findReactionCountsByCommentIdIn(commentIds)) {
+            reactionCounts.computeIfAbsent(count.getCommentId(), ignored -> new EnumMap<>(ReactionType.class))
+                    .put(count.getReactionType(), count.getCount());
+        }
+
+        Map<Long, ReactionType> userReactions = currentUser == null ? Collections.emptyMap()
+                : commentReactionRepository.findByUserIdAndCommentIdIn(currentUser.getId(), commentIds).stream()
+                .collect(Collectors.toMap(
+                        reaction -> reaction.getComment().getId(),
+                        com.mka.entity.CommentReaction::getReactionType,
+                        (left, right) -> left));
+        Set<Long> likedCommentIds = currentUser == null ? Collections.emptySet()
+                : new HashSet<>(commentLikeRepository.findLikedCommentIdsByUserIdAndCommentIdIn(
+                        currentUser.getId(), commentIds));
+
+        Map<Long, Long> replyCounts = commentRepository
+                .findByParentCommentIdInAndStatus(commentIds, CommentStatus.ACTIVE).stream()
+                .collect(Collectors.groupingBy(
+                        reply -> reply.getParentComment().getId(),
+                        Collectors.counting()));
+
+        return comments.stream().map(comment -> {
+            String translated = comment.getOriginalContent();
+            if (targetLanguage != null
+                    && !targetLanguage.equalsIgnoreCase(comment.getOriginalLanguage())
+                    && comment.getOriginalContent() != null
+                    && !comment.getOriginalContent().isBlank()) {
+                try {
+                    TranslationResponse response = translationService.translate(
+                            comment.getOriginalContent(), comment.getOriginalLanguage(), targetLanguage);
+                    if (response != null && response.getTranslatedText() != null) {
+                        translated = response.getTranslatedText();
+                    }
+                } catch (Throwable ex) {
+                    log.warn("Topic opinion translation skipped/failed [Comment ID: {}]: {}",
+                            comment.getId(), ex.getMessage());
+                }
+            }
+
+            Profile authorProfile = comment.getUser() == null ? null : profiles.get(comment.getUser().getId());
+            String handle = authorProfile != null && authorProfile.getUsername() != null
+                    ? authorProfile.getUsername()
+                    : (comment.getUser() != null && comment.getUser().getEmail() != null
+                    ? comment.getUser().getEmail().split("@")[0] : "anonymous");
+            String topicName = comment.getCustomTopic().getName();
+
+            return PostResponse.builder()
+                    .postId("TOPIC_OPINION_" + comment.getId())
+                    .feedItemId("TOPIC_OPINION_" + comment.getId())
+                    .feedItemType("TOPIC_OPINION")
+                    .sourceId(comment.getId())
+                    .topicId(comment.getCustomTopic().getId())
+                    .authorId(comment.getUser() != null ? comment.getUser().getId() : null)
+                    .username(handle)
+                    .authorAvatar(comment.getAuthorAvatar())
+                    .originalContent(comment.getOriginalContent())
+                    .translatedContent(translated)
+                    .originalLanguage(comment.getOriginalLanguage())
+                    .displayLanguage(targetLanguage != null ? targetLanguage : comment.getOriginalLanguage())
+                    .topic(topicName)
+                    .subtopic(topicName)
+                    .type(comment.getImageUrl() == null || comment.getImageUrl().isBlank()
+                            ? PostType.TEXT : PostType.IMAGE)
+                    .status(PostStatus.ACTIVE)
+                    .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(comment.getImageUrl()))
+                    .likeCount(comment.getLikeCount() != null ? comment.getLikeCount() : 0L)
+                    .commentCount(replyCounts.getOrDefault(comment.getId(), 0L))
+                    .reactionCounts(reactionCounts.getOrDefault(comment.getId(), Collections.emptyMap()))
+                    .userReaction(userReactions.get(comment.getId()))
+                    .isLikedByCurrentUser(likedCommentIds.contains(comment.getId()))
+                    .isSavedByCurrentUser(false)
+                    .createdAt(comment.getCreatedAt())
+                    .build();
+        }).toList();
     }
 
     private String detectTextLanguage(String text, String requestedLang, String fallbackLang) {

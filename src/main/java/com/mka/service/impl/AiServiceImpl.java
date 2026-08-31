@@ -136,10 +136,9 @@ public class AiServiceImpl implements AiService {
                 log.warn("AI Image Moderation flagged image for user {}: {}", user != null ? user.getEmail() : "anonymous", moderationResult);
                 String reason = moderationResult.replace("UNSAFE:", "").trim();
                 
-                String mime = contentType != null ? contentType : "image/jpeg";
-                String base64Data = "data:" + mime + ";base64," + java.util.Base64.getEncoder().encodeToString(bytes);
+                try { destFile.delete(); } catch (Exception ignored) {}
                 
-                saveBlockedAuditLog(user, "POST_IMAGE", base64Data, reason);
+                saveBlockedAuditLog(user, "POST_IMAGE", "/uploads/" + fileName, reason);
                 throw new BadRequestException("Image content blocked by AI moderation: " + reason);
             }
 

@@ -44,27 +44,30 @@ public class LikeServiceImpl implements LikeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
         if (!postLikeRepository.existsByPostIdAndUserId(postId, user.getId())) {
-            PostLike like = PostLike.builder()
-                    .post(post)
-                    .user(user)
-                    .build();
-            postLikeRepository.save(like);
+            try {
+                PostLike like = PostLike.builder()
+                        .post(post)
+                        .user(user)
+                        .build();
+                postLikeRepository.save(like);
 
-            post.setLikeCount((post.getLikeCount() != null ? post.getLikeCount() : 0) + 1);
-            postRepository.save(post);
+                postRepository.incrementLikeCount(postId);
 
-            if (!post.getUser().getId().equals(user.getId())) {
-                Profile profile = profileRepository.findByUser(user).orElse(null);
-                String avatar = profile != null && profile.getAvatar() != null ? profile.getAvatar() : null;
+                if (!post.getUser().getId().equals(user.getId())) {
+                    Profile profile = profileRepository.findByUser(user).orElse(null);
+                    String avatar = profile != null && profile.getAvatar() != null ? profile.getAvatar() : null;
 
-                notificationService.createNotification(
-                        post.getUser(),
-                        user,
-                        avatar,
-                        NotificationType.POST_LIKE,
-                        user.getFullName() + " liked your post",
-                        post.getId()
-                );
+                    notificationService.createNotification(
+                            post.getUser(),
+                            user,
+                            avatar,
+                            NotificationType.POST_LIKE,
+                            user.getFullName() + " liked your post",
+                            post.getId()
+                    );
+                }
+            } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+                // Ignore concurrent duplicate like attempt
             }
         }
     }
@@ -80,9 +83,7 @@ public class LikeServiceImpl implements LikeService {
 
         postLikeRepository.findByPostIdAndUserId(postId, user.getId()).ifPresent(like -> {
             postLikeRepository.delete(like);
-            long current = post.getLikeCount() != null ? post.getLikeCount() : 0;
-            post.setLikeCount(Math.max(0, current - 1));
-            postRepository.save(post);
+            postRepository.decrementLikeCount(postId);
         });
     }
 

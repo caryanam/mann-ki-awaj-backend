@@ -18,6 +18,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     Page<Comment> findByCustomTopicIdAndParentCommentIsNullAndStatus(Long customTopicId, CommentStatus status, Pageable pageable);
 
+    Page<Comment> findByCustomTopicIsNotNullAndParentCommentIsNullAndStatus(CommentStatus status, Pageable pageable);
+
+    Page<Comment> findByCustomTopicNameIgnoreCaseAndParentCommentIsNullAndStatus(String topicName, CommentStatus status, Pageable pageable);
+
     List<Comment> findByParentCommentIdAndStatus(Long parentCommentId, CommentStatus status);
 
     List<Comment> findByParentCommentIdInAndStatus(java.util.Collection<Long> parentCommentIds, CommentStatus status);
@@ -25,6 +29,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Optional<Comment> findByIdAndStatus(Long id, CommentStatus status);
 
     long countByPostIdAndStatus(Long postId, CommentStatus status);
+
+    long countByParentCommentIdAndStatus(Long parentCommentId, CommentStatus status);
 
     Page<Comment> findByUserId(Long userId, Pageable pageable);
 

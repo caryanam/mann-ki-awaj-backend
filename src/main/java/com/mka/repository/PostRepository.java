@@ -35,4 +35,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
     int deleteByStatusAndUpdatedAtBefore(PostStatus status, java.time.LocalDateTime dateTime);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Post p SET p.likeCount = COALESCE(p.likeCount, 0) + 1 WHERE p.id = :postId")
+    void incrementLikeCount(@org.springframework.data.repository.query.Param("postId") Long postId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Post p SET p.likeCount = CASE WHEN COALESCE(p.likeCount, 0) > 0 THEN p.likeCount - 1 ELSE 0 END WHERE p.id = :postId")
+    void decrementLikeCount(@org.springframework.data.repository.query.Param("postId") Long postId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Post p SET p.commentCount = COALESCE(p.commentCount, 0) + 1 WHERE p.id = :postId")
+    void incrementCommentCount(@org.springframework.data.repository.query.Param("postId") Long postId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Post p SET p.commentCount = CASE WHEN COALESCE(p.commentCount, 0) > 0 THEN p.commentCount - 1 ELSE 0 END WHERE p.id = :postId")
+    void decrementCommentCount(@org.springframework.data.repository.query.Param("postId") Long postId);
 }

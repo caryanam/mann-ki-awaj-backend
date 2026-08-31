@@ -113,6 +113,7 @@ class PostServiceImplTest {
         assertNotNull(response);
         assertEquals(10L, response.getId());
         assertEquals("Hello World", response.getOriginalContent());
+        assertEquals(PostStatus.ACTIVE, response.getStatus());
         verify(aiService).moderateContent(any(), any(), any());
         verify(postRepository).save(any(Post.class));
     }
@@ -172,6 +173,7 @@ class PostServiceImplTest {
 
         PostResponse resp1 = result.getContent().get(0);
         assertEquals(10L, resp1.getId());
+        assertEquals(PostStatus.ACTIVE, resp1.getStatus());
         assertTrue(resp1.isLikedByCurrentUser());
         assertFalse(resp1.isSavedByCurrentUser());
         assertEquals(com.mka.enums.ReactionType.RELATE, resp1.getUserReaction());
