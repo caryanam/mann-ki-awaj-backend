@@ -186,6 +186,30 @@ class MusicTrackRepositoryTest {
                 .containsExactlyInAnyOrder(MusicMood.ROMANTIC, MusicMood.CALM);
     }
 
+    @Test
+    void countsCommunityTracksExcludingDeleted() {
+        MusicTrack comm1 = track("comm1.mp3", MusicTrackStatus.PUBLISHED);
+        comm1.setSource(MusicTrackSource.COMMUNITY);
+        musicTrackRepository.save(comm1);
+
+        MusicTrack comm2 = track("comm2.mp3", MusicTrackStatus.PENDING_REVIEW);
+        comm2.setSource(MusicTrackSource.COMMUNITY);
+        musicTrackRepository.save(comm2);
+
+        MusicTrack commDeleted = track("comm-del.mp3", MusicTrackStatus.DELETED);
+        commDeleted.setSource(MusicTrackSource.COMMUNITY);
+        musicTrackRepository.save(commDeleted);
+
+        MusicTrack platform = track("plat.mp3", MusicTrackStatus.PUBLISHED);
+        platform.setSource(MusicTrackSource.PLATFORM);
+        musicTrackRepository.save(platform);
+
+        musicTrackRepository.flush();
+
+        long count = musicTrackRepository.countByUploadedByAndSource(uploader.getId(), "COMMUNITY");
+        assertThat(count).isEqualTo(2);
+    }
+
     private MusicTrack track(String audioKey, MusicTrackStatus status) {
         return MusicTrack.builder()
                 .title(" Test Track ")

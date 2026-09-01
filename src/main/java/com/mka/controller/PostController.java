@@ -53,29 +53,33 @@ public class PostController {
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "caption", required = false) String caption,
             @RequestParam(value = "topic", required = false) String topic,
-            @RequestParam(value = "mood", required = false) String mood) {
+            @RequestParam(value = "mood", required = false) String mood,
+            @RequestParam(value = "imageUrl", required = false) String imageUrl,
+            @RequestParam(value = "isMusicCommunity", required = false, defaultValue = "true") Boolean isMusicCommunity) {
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Voice note requires a valid audio recording file.");
+        }
 
         String audioUrl = null;
-        if (file != null && !file.isEmpty()) {
-            try {
-                java.io.File uploadsDir = new java.io.File("uploads");
-                if (!uploadsDir.exists()) {
-                    uploadsDir.mkdirs();
-                }
-                String ext = ".wav";
-                String orig = file.getOriginalFilename();
-                if (orig != null && orig.contains(".")) {
-                    ext = orig.substring(orig.lastIndexOf("."));
-                }
-                String fileName = java.util.UUID.randomUUID().toString() + ext;
-                java.io.File destFile = new java.io.File(uploadsDir, fileName).getAbsoluteFile();
-                try (java.io.InputStream is = file.getInputStream()) {
-                    java.nio.file.Files.copy(is, destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                }
-                audioUrl = "/uploads/" + fileName;
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Could not save uploaded audio file: " + e.getMessage());
+        try {
+            java.io.File uploadsDir = new java.io.File("uploads");
+            if (!uploadsDir.exists()) {
+                uploadsDir.mkdirs();
             }
+            String ext = ".wav";
+            String orig = file.getOriginalFilename();
+            if (orig != null && orig.contains(".")) {
+                ext = orig.substring(orig.lastIndexOf("."));
+            }
+            String fileName = java.util.UUID.randomUUID().toString() + ext;
+            java.io.File destFile = new java.io.File(uploadsDir, fileName).getAbsoluteFile();
+            try (java.io.InputStream is = file.getInputStream()) {
+                java.nio.file.Files.copy(is, destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            audioUrl = "/uploads/" + fileName;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Could not save uploaded audio file: " + e.getMessage());
         }
 
         String postTitle = (title != null && !title.isBlank()) ? title.trim() : "Voice Note";
@@ -89,6 +93,8 @@ public class PostController {
                 .mood(mood != null && !mood.isBlank() ? mood : "NEUTRAL")
                 .type(com.mka.enums.PostType.VOICE_NOTE)
                 .audioUrl(audioUrl)
+                .imageUrl(imageUrl)
+                .isMusicCommunity(isMusicCommunity != null ? isMusicCommunity : true)
                 .build();
 
         PostResponse post = postService.createPost(principal.getUsername(), request);
@@ -102,11 +108,11 @@ public class PostController {
     }
 
     @GetMapping
-    @Operation(summary = "Get post feed with optional topic filter and automatic AI translation")
+    @Operation(summary = "Get post feed with optional topic filter, community filter, and automatic AI translation")
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getFeed(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) String topic,
-
+            @RequestParam(required = false) String community,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -120,7 +126,7 @@ public class PostController {
             sort = sort.and(Sort.by(sortDirection, "id"));
         }
         String email = principal != null ? principal.getUsername() : null;
-        Page<PostResponse> feed = postService.getFeed(email, topic, PageRequest.of(page, size, sort));
+        Page<PostResponse> feed = postService.getFeed(email, topic, community, PageRequest.of(page, size, sort));
 
         return ResponseEntity.ok(
                 ApiResponse.<Page<PostResponse>>builder()

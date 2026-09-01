@@ -19,6 +19,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByStatusAndSubtopicIgnoreCase(PostStatus status, String subtopic, Pageable pageable);
 
+    Page<Post> findByStatusAndIsMusicCommunityTrue(PostStatus status, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Post p WHERE p.status = :status AND (p.isMusicCommunity = true OR (p.audioUrl IS NOT NULL AND p.audioUrl != ''))")
+    Page<Post> findMusicCommunityPosts(@org.springframework.data.repository.query.Param("status") PostStatus status, Pageable pageable);
+
 
     Page<Post> findByUserIdAndStatus(Long userId, PostStatus status, Pageable pageable);
 
@@ -27,6 +32,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByUserId(Long userId, Pageable pageable);
 
     long countByUserId(Long userId);
+
+    long countByUserIdAndStatusNot(Long userId, PostStatus status);
 
     long countByStatus(PostStatus status);
 

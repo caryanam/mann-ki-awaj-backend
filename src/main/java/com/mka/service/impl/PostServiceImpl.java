@@ -17,6 +17,7 @@ import com.mka.repository.CommentLikeRepository;
 import com.mka.repository.CommentReactionRepository;
 import com.mka.repository.CommentRepository;
 import com.mka.repository.CustomTopicRepository;
+import com.mka.repository.MusicTrackRepository;
 import com.mka.repository.PostLikeRepository;
 
 import com.mka.repository.PostReactionRepository;
@@ -68,6 +69,7 @@ public class PostServiceImpl implements PostService {
     private final CommentRepository commentRepository;
     private final CommentReactionRepository commentReactionRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final MusicTrackRepository musicTrackRepository;
 
 
     @Override
@@ -139,6 +141,19 @@ public class PostServiceImpl implements PostService {
             customTopicRepository.save(topicEntity);
         }
 
+        boolean isMusicCommunity = Boolean.TRUE.equals(request.getIsMusicCommunity());
+        if (isMusicCommunity) {
+            boolean hasAudio = request.getAudioUrl() != null && !request.getAudioUrl().trim().isBlank();
+            boolean hasTrack = request.getMusicTrackId() != null;
+            if (!hasAudio && !hasTrack) {
+                throw new IllegalArgumentException("Music Community posts require a valid audio attachment, recorded voice note, or linked music track.");
+            }
+            if (hasTrack) {
+                musicTrackRepository.findByIdAndStatus(request.getMusicTrackId(), com.mka.enums.MusicTrackStatus.PUBLISHED)
+                        .orElseThrow(() -> new IllegalArgumentException("Linked music track was not found or is not currently published."));
+            }
+        }
+
         Post post = Post.builder()
                 .user(user)
                 .username(handle)
@@ -154,6 +169,8 @@ public class PostServiceImpl implements PostService {
                 .type(request.getType() != null ? request.getType() : PostType.TEXT)
                 .imageUrl(request.getImageUrl())
                 .audioUrl(request.getAudioUrl())
+                .isMusicCommunity(isMusicCommunity)
+                .musicTrackId(request.getMusicTrackId())
                 .movieName(request.getMovieName())
                 .movieRating(request.getMovieRating())
                 .isSpoiler(request.getIsSpoiler())
@@ -170,7 +187,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PostResponse> getFeed(String email, String topic, Pageable pageable) {
+    public Page<PostResponse> getFeed(String email, String topic, String community, Pageable pageable) {
         User user = email != null ? userRepository.findByEmail(email).orElse(null) : null;
         Profile profile = user != null ? profileRepository.findByUser(user).orElse(null) : null;
         String userLang = profile != null && profile.getPreferredLanguage() != null ? profile.getPreferredLanguage() : "EN";
@@ -179,8 +196,12 @@ public class PostServiceImpl implements PostService {
         int candidateSize = (int) Math.min(Integer.MAX_VALUE, requestedEnd);
         Pageable candidatePageable = PageRequest.of(0, Math.max(candidateSize, 1), pageable.getSort());
 
+        boolean isMusicFeed = community != null && community.trim().equalsIgnoreCase("MUSIC");
+
         Page<Post> posts;
-        if (topic != null && !topic.isBlank()) {
+        if (isMusicFeed) {
+            posts = postRepository.findMusicCommunityPosts(PostStatus.ACTIVE, candidatePageable);
+        } else if (topic != null && !topic.isBlank()) {
             Page<Post> mainTopicPosts = postRepository.findByStatusAndTopicIgnoreCase(PostStatus.ACTIVE, topic.trim(), candidatePageable);
             if (mainTopicPosts.hasContent()) {
                 posts = mainTopicPosts;
@@ -191,11 +212,13 @@ public class PostServiceImpl implements PostService {
             posts = postRepository.findByStatus(PostStatus.ACTIVE, candidatePageable);
         }
 
-        Page<Comment> topicOpinions = topic != null && !topic.isBlank()
-                ? commentRepository.findByCustomTopicNameIgnoreCaseAndParentCommentIsNullAndStatus(
-                        topic.trim(), CommentStatus.ACTIVE, candidatePageable)
-                : commentRepository.findByCustomTopicIsNotNullAndParentCommentIsNullAndStatus(
-                        CommentStatus.ACTIVE, candidatePageable);
+        Page<Comment> topicOpinions = isMusicFeed
+                ? Page.empty(candidatePageable)
+                : (topic != null && !topic.isBlank()
+                    ? commentRepository.findByCustomTopicNameIgnoreCaseAndParentCommentIsNullAndStatus(
+                            topic.trim(), CommentStatus.ACTIVE, candidatePageable)
+                    : commentRepository.findByCustomTopicIsNotNullAndParentCommentIsNullAndStatus(
+                            CommentStatus.ACTIVE, candidatePageable));
 
         if (posts.isEmpty() && topicOpinions.isEmpty()) {
             return Page.empty(pageable);
@@ -436,6 +459,8 @@ public class PostServiceImpl implements PostService {
                 .userReaction(userReaction)
                 .isLikedByCurrentUser(isLiked)
                 .isSavedByCurrentUser(isSaved)
+                .isMusicCommunity(post.getIsMusicCommunity())
+                .musicTrackId(post.getMusicTrackId())
                 .createdAt(post.getCreatedAt())
                 .build();
     }
@@ -524,6 +549,8 @@ public class PostServiceImpl implements PostService {
                 .userReaction(userReaction)
                 .isLikedByCurrentUser(isLiked)
                 .isSavedByCurrentUser(isSaved)
+                .isMusicCommunity(post.getIsMusicCommunity())
+                .musicTrackId(post.getMusicTrackId())
                 .createdAt(post.getCreatedAt())
                 .build();
     }

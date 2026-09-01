@@ -60,6 +60,12 @@ public class Post {
     @Column(name = "audio_url", length = 1024)
     private String audioUrl;
 
+    @Column(name = "is_music_community")
+    private Boolean isMusicCommunity = false;
+
+    @Column(name = "music_track_id")
+    private Long musicTrackId;
+
     @Column(length = 150)
     private String movieName;
 
@@ -195,6 +201,12 @@ public class Post {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
+    public Boolean getIsMusicCommunity() { return isMusicCommunity; }
+    public void setIsMusicCommunity(Boolean isMusicCommunity) { this.isMusicCommunity = isMusicCommunity; }
+
+    public Long getMusicTrackId() { return musicTrackId; }
+    public void setMusicTrackId(Long musicTrackId) { this.musicTrackId = musicTrackId; }
+
     public static PostBuilder builder() { return new PostBuilder(); }
 
     public static class PostBuilder {
@@ -213,6 +225,8 @@ public class Post {
         private PostType type = PostType.TEXT;
         private String imageUrl;
         private String audioUrl;
+        private Boolean isMusicCommunity = false;
+        private Long musicTrackId;
         private String movieName;
         private Integer movieRating;
         private Boolean isSpoiler = false;
@@ -238,6 +252,8 @@ public class Post {
         public PostBuilder type(PostType type) { this.type = type; return this; }
         public PostBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
         public PostBuilder audioUrl(String audioUrl) { this.audioUrl = audioUrl; return this; }
+        public PostBuilder isMusicCommunity(Boolean isMusicCommunity) { this.isMusicCommunity = isMusicCommunity; return this; }
+        public PostBuilder musicTrackId(Long musicTrackId) { this.musicTrackId = musicTrackId; return this; }
         public PostBuilder movieName(String movieName) { this.movieName = movieName; return this; }
         public PostBuilder movieRating(Integer movieRating) { this.movieRating = movieRating; return this; }
         public PostBuilder isSpoiler(Boolean isSpoiler) { this.isSpoiler = isSpoiler; return this; }
@@ -266,6 +282,8 @@ public class Post {
 
             post.setImageUrl(imageUrl);
             post.setAudioUrl(audioUrl);
+            post.setIsMusicCommunity(isMusicCommunity);
+            post.setMusicTrackId(musicTrackId);
             post.setMovieName(movieName);
             post.setMovieRating(movieRating);
             post.setIsSpoiler(isSpoiler);

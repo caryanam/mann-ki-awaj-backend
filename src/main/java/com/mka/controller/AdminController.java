@@ -437,5 +437,36 @@ public class AdminController {
                         .build()
         );
     }
+
+    @GetMapping("/topics")
+    @Operation(summary = "List all user-created custom topics with optional search & filter (Admin only)")
+    public ResponseEntity<ApiResponse<Page<java.util.Map<String, Object>>>> getTopics(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) com.mka.enums.PostTopic parentTopic,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Page<java.util.Map<String, Object>> topics = adminService.getTopics(
+                search, parentTopic, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+        return ResponseEntity.ok(
+                ApiResponse.<Page<java.util.Map<String, Object>>>builder()
+                        .success(true)
+                        .message("Topics retrieved successfully")
+                        .data(topics)
+                        .build()
+        );
+    }
+
+    @DeleteMapping("/topics/{id}")
+    @Operation(summary = "Delete custom topic (Admin only)")
+    public ResponseEntity<ApiResponse<Void>> deleteTopic(@PathVariable Long id) {
+        adminService.deleteTopic(id);
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .success(true)
+                        .message("Topic deleted successfully")
+                        .build()
+        );
+    }
 }
 

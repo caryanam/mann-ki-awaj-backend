@@ -58,4 +58,8 @@ public class CreatePostRequest {
     private Boolean isSpoiler;
 
     private String mood;
+
+    private Boolean isMusicCommunity;
+
+    private Long musicTrackId;
 }

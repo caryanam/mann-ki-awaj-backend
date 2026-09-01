@@ -24,6 +24,19 @@ public interface MusicTrackRepository extends JpaRepository<MusicTrack, Long>, J
                                                           MusicTrackStatus status, Pageable pageable);
     long countByUploadedByIdAndSourceAndStatus(Long uploaderId, MusicTrackSource source, MusicTrackStatus status);
 
+    @Query("SELECT COUNT(t) FROM MusicTrack t WHERE t.uploadedBy.id = :uploadedBy AND t.source = :source AND t.status <> com.mka.enums.MusicTrackStatus.DELETED")
+    long countByUploadedByIdAndSourceAndStatusNotDeleted(@Param("uploadedBy") Long uploadedBy, @Param("source") MusicTrackSource source);
+
+    default long countByUploadedByAndSource(Long uploadedBy, String source) {
+        if (uploadedBy == null || source == null) return 0L;
+        try {
+            MusicTrackSource trackSource = MusicTrackSource.valueOf(source.trim().toUpperCase());
+            return countByUploadedByIdAndSourceAndStatusNotDeleted(uploadedBy, trackSource);
+        } catch (IllegalArgumentException e) {
+            return 0L;
+        }
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from MusicTrack t where t.id = :id and t.status <> com.mka.enums.MusicTrackStatus.DELETED")
     Optional<MusicTrack> findActiveByIdForUpdate(@Param("id") Long id);

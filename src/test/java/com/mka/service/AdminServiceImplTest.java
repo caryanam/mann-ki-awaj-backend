@@ -57,6 +57,15 @@ class AdminServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private MusicTrackRepository musicTrackRepository;
+
+    @Mock
+    private BlockedContentRepository blockedContentRepository;
+
+    @Mock
+    private CustomTopicRepository customTopicRepository;
+
     @InjectMocks
     private AdminServiceImpl adminService;
 
@@ -184,5 +193,23 @@ class AdminServiceImplTest {
         assertThrows(com.mka.exception.ResourceAlreadyExistsException.class, () ->
                 adminService.rejectReport(50L)
         );
+    }
+
+    @Test
+    void testGetAllUsers_ComputesPostsAndWarningsCorrectly() {
+        targetUser.setWarningCount(2);
+        Pageable pageable = PageRequest.of(0, 10);
+        when(userRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(targetUser)));
+        when(postRepository.countByUserIdAndStatusNot(10L, PostStatus.DELETED)).thenReturn(5L);
+        when(musicTrackRepository.countByUploadedByAndSource(10L, "COMMUNITY")).thenReturn(3L);
+
+        Page<AdminUserResponse> result = adminService.getAllUsers(pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        AdminUserResponse userResp = result.getContent().get(0);
+        assertEquals(10L, userResp.getId());
+        assertEquals(8L, userResp.getPostCount()); // 5 posts + 3 community tracks
+        assertEquals(2L, userResp.getWarningCount()); // from user.getWarningCount()
     }
 }

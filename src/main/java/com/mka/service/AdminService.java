@@ -66,4 +66,8 @@ public interface AdminService {
     Page<com.mka.dto.response.BlockedContentResponse> getBlockedContent(String contentType, Pageable pageable);
 
     void sendWarningForBlockedContent(Long id, SendWarningRequest request);
+
+    Page<java.util.Map<String, Object>> getTopics(String search, com.mka.enums.PostTopic parentTopic, Pageable pageable);
+
+    void deleteTopic(Long topicId);
 }

@@ -53,5 +53,7 @@ public class PostResponse {
     private ReactionType userReaction;
     private boolean isLikedByCurrentUser;
     private boolean isSavedByCurrentUser;
+    private Boolean isMusicCommunity;
+    private Long musicTrackId;
     private LocalDateTime createdAt;
 }

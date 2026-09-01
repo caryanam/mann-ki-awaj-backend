@@ -11,7 +11,11 @@ public interface PostService {
 
     PostResponse createPost(String email, CreatePostRequest request);
 
-    Page<PostResponse> getFeed(String email, String topic, Pageable pageable);
+    Page<PostResponse> getFeed(String email, String topic, String community, Pageable pageable);
+
+    default Page<PostResponse> getFeed(String email, String topic, Pageable pageable) {
+        return getFeed(email, topic, null, pageable);
+    }
 
 
     PostResponse getPostById(String email, Long id);

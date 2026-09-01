@@ -30,6 +30,8 @@ public class AdminServiceImpl implements AdminService {
     private final ContentReviewQueueRepository reviewQueueRepository;
     private final NotificationService notificationService;
     private final BlockedContentRepository blockedContentRepository;
+    private final CustomTopicRepository customTopicRepository;
+    private final MusicTrackRepository musicTrackRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -322,8 +324,9 @@ public class AdminServiceImpl implements AdminService {
 
     private AdminUserResponse mapToUserResponse(User user) {
         Profile profile = profileRepository.findByUser(user).orElse(null);
-        long postsCount = postRepository.countByUserId(user.getId());
-        long warningsCount = blockedContentRepository.countByUserIdAndStatus(user.getId(), "WARNING_ISSUED");
+        long musicUploadsCount = musicTrackRepository.countByUploadedByAndSource(user.getId(), "COMMUNITY");
+        long postsCount = postRepository.countByUserIdAndStatusNot(user.getId(), PostStatus.DELETED) + musicUploadsCount;
+        long warningsCount = user.getWarningCount() != null ? user.getWarningCount() : 0L;
 
         return AdminUserResponse.builder()
                 .id(user.getId())
@@ -520,5 +523,46 @@ public class AdminServiceImpl implements AdminService {
 
         blocked.setStatus("WARNING_ISSUED");
         blockedContentRepository.save(blocked);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<java.util.Map<String, Object>> getTopics(String search, PostTopic parentTopic, Pageable pageable) {
+        Page<CustomTopic> topicsPage;
+        boolean hasSearch = search != null && !search.trim().isBlank();
+        String cleanSearch = hasSearch ? search.trim() : "";
+
+        if (parentTopic != null && hasSearch) {
+            topicsPage = customTopicRepository.findByParentTopicAndNameContainingIgnoreCase(parentTopic, cleanSearch, pageable);
+        } else if (parentTopic != null) {
+            topicsPage = customTopicRepository.findByParentTopic(parentTopic, pageable);
+        } else if (hasSearch) {
+            topicsPage = customTopicRepository.findByNameContainingIgnoreCaseOrCreatedByUsernameContainingIgnoreCase(cleanSearch, cleanSearch, pageable);
+        } else {
+            topicsPage = customTopicRepository.findAll(pageable);
+        }
+
+        return topicsPage.map(t -> {
+            java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("id", t.getId());
+            map.put("name", t.getName());
+            map.put("label", t.getLabel() != null ? t.getLabel() : t.getName());
+            map.put("icon", t.getIcon() != null ? t.getIcon() : "💡");
+            map.put("createdByUsername", t.getCreatedByUsername() != null ? t.getCreatedByUsername() : "@anonymous");
+            map.put("parentTopic", t.getParentTopic() != null ? t.getParentTopic().name() : "GENERAL");
+            map.put("postCount", t.getPostCount() != null ? t.getPostCount() : 0L);
+            long commentCount = commentRepository.countByCustomTopicIdAndStatus(t.getId(), CommentStatus.ACTIVE);
+            map.put("commentCount", commentCount);
+            map.put("createdAt", t.getCreatedAt() != null ? t.getCreatedAt().toString() : null);
+            return map;
+        });
+    }
+
+    @Override
+    @Transactional
+    public void deleteTopic(Long topicId) {
+        CustomTopic topic = customTopicRepository.findById(topicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic not found with id: " + topicId));
+        customTopicRepository.delete(topic);
     }
 }
