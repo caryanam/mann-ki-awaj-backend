@@ -29,7 +29,7 @@ public class ProfileMapper {
 
         Long daysLeft = 0L;
         if (entity.getUsernameChangeCount() != null && entity.getUsernameChangeCount() >= 1 && entity.getUsernameLastChangedAt() != null) {
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.Instant now = java.time.Instant.now();
             long daysPassed = java.time.Duration.between(entity.getUsernameLastChangedAt(), now).toDays();
             daysLeft = Math.max(0L, 14L - daysPassed);
         }

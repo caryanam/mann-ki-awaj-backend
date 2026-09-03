@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,7 +64,7 @@ public class PresenceManager {
                 activeSessions.remove(userId);
                 lastHeartbeats.remove(userId);
 
-                LocalDateTime now = LocalDateTime.now();
+                Instant now = Instant.now();
                 persistLastSeen(userId, now);
 
                 String username = userNames.getOrDefault(userId, "user_" + userId);
@@ -84,7 +84,7 @@ public class PresenceManager {
         return false;
     }
 
-    public LocalDateTime getLastSeen(Long userId) {
+    public Instant getLastSeen(Long userId) {
         if (userId == null) return null;
         return profileRepository.findByUserId(userId)
                 .map(Profile::getLastSeen)
@@ -101,7 +101,7 @@ public class PresenceManager {
                 activeSessions.remove(userId);
                 lastHeartbeats.remove(userId);
 
-                LocalDateTime now = LocalDateTime.now();
+                Instant now = Instant.now();
                 persistLastSeen(userId, now);
 
                 String username = userNames.getOrDefault(userId, "user_" + userId);
@@ -111,7 +111,7 @@ public class PresenceManager {
         }
     }
 
-    private void persistLastSeen(Long userId, LocalDateTime lastSeenTime) {
+    private void persistLastSeen(Long userId, Instant lastSeenTime) {
         try {
             profileRepository.findByUserId(userId).ifPresent(profile -> {
                 profile.setLastSeen(lastSeenTime);
@@ -122,7 +122,7 @@ public class PresenceManager {
         }
     }
 
-    public void broadcastPresenceChange(Long userId, String username, String status, LocalDateTime lastSeen) {
+    public void broadcastPresenceChange(Long userId, String username, String status, Instant lastSeen) {
         if (socketIOServer == null || userId == null) return;
 
         String handle = userNames.getOrDefault(userId, username);

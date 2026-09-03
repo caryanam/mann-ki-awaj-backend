@@ -55,7 +55,7 @@ public class User extends BaseEntity {
     private Integer warningCount = 0;
 
     @Column(name = "muted_until")
-    private java.time.LocalDateTime mutedUntil;
+    private java.time.Instant mutedUntil;
 
     public String getUsername() {
         return email;

@@ -21,7 +21,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -98,7 +99,7 @@ class CommentServiceImplTest {
                 .originalLanguage("EN")
                 .status(CommentStatus.ACTIVE)
                 .likeCount(2L)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         replyComment = Comment.builder()
@@ -111,7 +112,7 @@ class CommentServiceImplTest {
                 .originalLanguage("EN")
                 .status(CommentStatus.ACTIVE)
                 .likeCount(1L)
-                .createdAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(Instant.now().plus(5, ChronoUnit.MINUTES))
                 .build();
     }
 

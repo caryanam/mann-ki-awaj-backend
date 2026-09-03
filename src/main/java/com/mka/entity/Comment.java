@@ -3,7 +3,7 @@ package com.mka.entity;
 import com.mka.enums.CommentStatus;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "comments")
@@ -49,13 +49,13 @@ public class Comment {
     private CommentStatus status = CommentStatus.ACTIVE;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public Comment() {}
 
-    public Comment(Long id, Post post, User user, Comment parentComment, String authorAvatar, String originalContent, String originalLanguage, Long likeCount, CommentStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Comment(Long id, Post post, User user, Comment parentComment, String authorAvatar, String originalContent, String originalLanguage, Long likeCount, CommentStatus status, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.post = post;
         this.user = user;
@@ -71,12 +71,13 @@ public class Comment {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -111,11 +112,11 @@ public class Comment {
     public CommentStatus getStatus() { return status; }
     public void setStatus(CommentStatus status) { this.status = status; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static CommentBuilder builder() { return new CommentBuilder(); }
 
@@ -131,8 +132,8 @@ public class Comment {
         private String imageUrl;
         private Long likeCount = 0L;
         private CommentStatus status = CommentStatus.ACTIVE;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
+        private Instant createdAt;
+        private Instant updatedAt;
 
         public CommentBuilder id(Long id) { this.id = id; return this; }
         public CommentBuilder post(Post post) { this.post = post; return this; }
@@ -145,8 +146,8 @@ public class Comment {
         public CommentBuilder imageUrl(String imageUrl) { this.imageUrl = imageUrl; return this; }
         public CommentBuilder likeCount(Long likeCount) { this.likeCount = likeCount; return this; }
         public CommentBuilder status(CommentStatus status) { this.status = status; return this; }
-        public CommentBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
-        public CommentBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+        public CommentBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public CommentBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Comment build() {
             Comment comment = new Comment(id, post, user, parentComment, authorAvatar, originalContent, originalLanguage, likeCount, status, createdAt, updatedAt);

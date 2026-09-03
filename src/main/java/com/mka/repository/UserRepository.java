@@ -33,5 +33,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
-    int deleteByDeletedTrueAndUpdatedAtBefore(java.time.LocalDateTime dateTime);
+    int deleteByDeletedTrueAndUpdatedAtBefore(java.time.Instant dateTime);
 }

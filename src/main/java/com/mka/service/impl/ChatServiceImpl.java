@@ -26,7 +26,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -115,7 +115,7 @@ public class ChatServiceImpl implements ChatService {
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
         
-        room.setUpdatedAt(LocalDateTime.now());
+        room.setUpdatedAt(Instant.now());
         chatRoomRepository.save(room);
 
         ChatMessageResponse response = mapMessageToResponse(savedMessage);
@@ -276,7 +276,7 @@ public class ChatServiceImpl implements ChatService {
         long unreadCount = currentUser != null ? chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.getId(), currentUser.getId()) : 0L;
 
         boolean isOtherOnline = presenceManager.isUserOnline(otherUser.getId());
-        LocalDateTime otherLastSeen = presenceManager.getLastSeen(otherUser.getId());
+        Instant otherLastSeen = presenceManager.getLastSeen(otherUser.getId());
 
         return ChatRoomResponse.builder()
                 .id(room.getId())

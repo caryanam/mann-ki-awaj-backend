@@ -2,7 +2,7 @@ package com.mka.entity;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -32,14 +32,14 @@ public class ChatRoom {
     private Long requestSenderId;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public ChatRoom() {}
 
-    public ChatRoom(Long id, User participant1, User participant2, String requestStatus, Long requestSenderId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public ChatRoom(Long id, User participant1, User participant2, String requestStatus, Long requestSenderId, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.participant1 = participant1;
         this.participant2 = participant2;
@@ -51,13 +51,13 @@ public class ChatRoom {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -81,11 +81,11 @@ public class ChatRoom {
     public Long getRequestSenderId() { return requestSenderId; }
     public void setRequestSenderId(Long requestSenderId) { this.requestSenderId = requestSenderId; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static ChatRoomBuilder builder() { return new ChatRoomBuilder(); }
 
@@ -95,8 +95,8 @@ public class ChatRoom {
         private User participant2;
         private String requestStatus = "PENDING";
         private Long requestSenderId;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
+        private Instant createdAt;
+        private Instant updatedAt;
 
         public ChatRoomBuilder id(Long id) { this.id = id; return this; }
         public ChatRoomBuilder participant1(User participant1) { this.participant1 = participant1; return this; }
@@ -105,8 +105,8 @@ public class ChatRoom {
         public ChatRoomBuilder user2(User user2) { this.participant2 = user2; return this; }
         public ChatRoomBuilder requestStatus(String requestStatus) { this.requestStatus = requestStatus; return this; }
         public ChatRoomBuilder requestSenderId(Long requestSenderId) { this.requestSenderId = requestSenderId; return this; }
-        public ChatRoomBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
-        public ChatRoomBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+        public ChatRoomBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public ChatRoomBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public ChatRoom build() {
             return new ChatRoom(id, participant1, participant2, requestStatus, requestSenderId, createdAt, updatedAt);

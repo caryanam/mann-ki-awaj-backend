@@ -37,11 +37,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     long countByStatus(PostStatus status);
 
-    long countByCreatedAtAfter(java.time.LocalDateTime dateTime);
+    long countByCreatedAtAfter(java.time.Instant dateTime);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
-    int deleteByStatusAndUpdatedAtBefore(PostStatus status, java.time.LocalDateTime dateTime);
+    int deleteByStatusAndUpdatedAtBefore(PostStatus status, java.time.Instant dateTime);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("UPDATE Post p SET p.likeCount = COALESCE(p.likeCount, 0) + 1 WHERE p.id = :postId")

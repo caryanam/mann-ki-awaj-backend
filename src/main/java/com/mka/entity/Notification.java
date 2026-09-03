@@ -3,7 +3,7 @@ package com.mka.entity;
 import com.mka.enums.NotificationType;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "notifications")
@@ -37,11 +37,11 @@ public class Notification {
     private User sender;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public Notification() {}
 
-    public Notification(Long id, User recipient, NotificationType type, String message, Boolean isRead, String senderAvatar, Long targetId, LocalDateTime createdAt) {
+    public Notification(Long id, User recipient, NotificationType type, String message, Boolean isRead, String senderAvatar, Long targetId, Instant createdAt) {
         this.id = id;
         this.recipient = recipient;
         this.type = type;
@@ -54,7 +54,7 @@ public class Notification {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -84,8 +84,8 @@ public class Notification {
     public User getSender() { return sender; }
     public void setSender(User sender) { this.sender = sender; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public static NotificationBuilder builder() { return new NotificationBuilder(); }
 
@@ -98,7 +98,7 @@ public class Notification {
         private Boolean isRead = false;
         private String senderAvatar;
         private Long targetId;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
 
         public NotificationBuilder id(Long id) { this.id = id; return this; }
         public NotificationBuilder user(User user) { this.user = user; return this; }
@@ -109,7 +109,7 @@ public class Notification {
         public NotificationBuilder isRead(Boolean isRead) { this.isRead = isRead; return this; }
         public NotificationBuilder senderAvatar(String senderAvatar) { this.senderAvatar = senderAvatar; return this; }
         public NotificationBuilder targetId(Long targetId) { this.targetId = targetId; return this; }
-        public NotificationBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public NotificationBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
 
         public Notification build() {
             Notification n = new Notification(id, user, type, message, isRead, senderAvatar, targetId, createdAt);

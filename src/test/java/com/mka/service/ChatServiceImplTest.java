@@ -23,7 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Map;
 
@@ -80,8 +80,8 @@ class ChatServiceImplTest {
                 .id(100L)
                 .user1(senderUser)
                 .user2(targetUser)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
     }
 
@@ -115,7 +115,7 @@ class ChatServiceImplTest {
                 .content("Hello there!")
                 .messageType(MessageType.TEXT)
                 .isRead(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(senderUser));
@@ -150,7 +150,7 @@ class ChatServiceImplTest {
                 .content(request.getContent())
                 .messageType(MessageType.TEXT)
                 .isRead(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         when(userRepository.findByEmail("target@example.com")).thenReturn(Optional.of(targetUser));
@@ -200,8 +200,8 @@ class ChatServiceImplTest {
                 .participant2(targetUser)
                 .requestSenderId(1L)
                 .requestStatus("PENDING")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
         when(userRepository.findByEmail("target@example.com")).thenReturn(Optional.of(targetUser));
@@ -224,8 +224,8 @@ class ChatServiceImplTest {
                 .participant2(targetUser)
                 .requestSenderId(1L)
                 .requestStatus("PENDING")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
         when(userRepository.findByEmail("unrelated@example.com")).thenReturn(Optional.of(unrelatedUser));
@@ -248,8 +248,8 @@ class ChatServiceImplTest {
                 .participant2(targetUser)
                 .requestSenderId(1L)
                 .requestStatus("PENDING")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
         when(userRepository.findByEmail("sender@example.com")).thenReturn(Optional.of(senderUser));

@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -22,5 +22,5 @@ public class NotificationResponse {
     private String senderUsername;
     private String senderAvatar;
     private Long targetId;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

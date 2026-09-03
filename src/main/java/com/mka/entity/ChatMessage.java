@@ -3,7 +3,7 @@ package com.mka.entity;
 import com.mka.enums.MessageType;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "chat_messages")
@@ -35,11 +35,11 @@ public class ChatMessage {
     private Boolean isRead = false;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public ChatMessage() {}
 
-    public ChatMessage(Long id, ChatRoom room, User sender, String senderAvatar, String content, MessageType messageType, Boolean isRead, LocalDateTime createdAt) {
+    public ChatMessage(Long id, ChatRoom room, User sender, String senderAvatar, String content, MessageType messageType, Boolean isRead, Instant createdAt) {
         this.id = id;
         this.room = room;
         this.sender = sender;
@@ -52,7 +52,7 @@ public class ChatMessage {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -76,8 +76,8 @@ public class ChatMessage {
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public static ChatMessageBuilder builder() { return new ChatMessageBuilder(); }
 
@@ -89,7 +89,7 @@ public class ChatMessage {
         private String content;
         private MessageType messageType = MessageType.TEXT;
         private Boolean isRead = false;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
 
         public ChatMessageBuilder id(Long id) { this.id = id; return this; }
         public ChatMessageBuilder room(ChatRoom room) { this.room = room; return this; }
@@ -98,7 +98,7 @@ public class ChatMessage {
         public ChatMessageBuilder content(String content) { this.content = content; return this; }
         public ChatMessageBuilder messageType(MessageType messageType) { this.messageType = messageType; return this; }
         public ChatMessageBuilder isRead(Boolean isRead) { this.isRead = isRead; return this; }
-        public ChatMessageBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public ChatMessageBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
 
         public ChatMessage build() {
             return new ChatMessage(id, room, sender, senderAvatar, content, messageType, isRead, createdAt);

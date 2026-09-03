@@ -5,7 +5,7 @@ import com.mka.enums.PostTopic;
 import com.mka.enums.PostType;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "posts")
@@ -87,13 +87,13 @@ public class Post {
     private PostStatus status = PostStatus.ACTIVE;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public Post() {}
 
-    public Post(Long id, User user, String username, String title, String summary, String caption, String description, String authorAvatar, String originalContent, String originalLanguage, String topic, PostType type, String imageUrl, Long likeCount, Long commentCount, PostStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Post(Long id, User user, String username, String title, String summary, String caption, String description, String authorAvatar, String originalContent, String originalLanguage, String topic, PostType type, String imageUrl, Long likeCount, Long commentCount, PostStatus status, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.user = user;
         this.username = username;
@@ -117,12 +117,13 @@ public class Post {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public String getFormattedPostId() {
@@ -195,11 +196,11 @@ public class Post {
     public PostStatus getStatus() { return status; }
     public void setStatus(PostStatus status) { this.status = status; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public Boolean getIsMusicCommunity() { return isMusicCommunity; }
     public void setIsMusicCommunity(Boolean isMusicCommunity) { this.isMusicCommunity = isMusicCommunity; }
@@ -234,8 +235,8 @@ public class Post {
         private Long likeCount = 0L;
         private Long commentCount = 0L;
         private PostStatus status = PostStatus.ACTIVE;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
+        private Instant createdAt;
+        private Instant updatedAt;
 
         public PostBuilder id(Long id) { this.id = id; return this; }
         public PostBuilder user(User user) { this.user = user; return this; }
@@ -261,8 +262,8 @@ public class Post {
         public PostBuilder likeCount(Long likeCount) { this.likeCount = likeCount; return this; }
         public PostBuilder commentCount(Long commentCount) { this.commentCount = commentCount; return this; }
         public PostBuilder status(PostStatus status) { this.status = status; return this; }
-        public PostBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
-        public PostBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+        public PostBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public PostBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Post build() {
             Post post = new Post();

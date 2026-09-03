@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +32,6 @@ public class CommentResponse {
     private long likeCount;
     private Map<ReactionType, Long> reactionCounts;
     private boolean isLikedByCurrentUser;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private List<CommentResponse> replies;
 }

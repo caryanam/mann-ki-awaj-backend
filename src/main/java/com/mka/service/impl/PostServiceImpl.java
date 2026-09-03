@@ -81,7 +81,7 @@ public class PostServiceImpl implements PostService {
         if (!Boolean.TRUE.equals(user.getActive())) {
             throw new IllegalArgumentException("Your account has been permanently suspended due to repeated violations.");
         }
-        if (user.getMutedUntil() != null && java.time.LocalDateTime.now().isBefore(user.getMutedUntil())) {
+        if (user.getMutedUntil() != null && java.time.Instant.now().isBefore(user.getMutedUntil())) {
             throw new IllegalArgumentException("Your account is currently restricted from creating new posts for 48 hours due to a safety warning.");
         }
 

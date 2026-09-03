@@ -394,7 +394,7 @@ class AdminMusicManagementServiceImplTest {
                 .audioStorageKey(audioKey).coverStorageKey(coverKey).mimeType("audio/mpeg")
                 .fileSizeBytes(5L).status(status).featured(false).sortOrder(0).uploadedBy(user).build();
         track.setId(7L);
-        track.setCreatedAt(LocalDateTime.of(2026, 1, 1, 0, 0));
+        track.setCreatedAt(java.time.Instant.parse("2026-01-01T00:00:00Z"));
         if (status == MusicTrackStatus.PUBLISHED) track.setPublishedAt(LocalDateTime.now());
         return track;
     }

@@ -10,7 +10,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class CleanupScheduler {
     @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void purgeSoftDeletedItems() {
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(30);
+        Instant cutoff = Instant.now().minus(30, ChronoUnit.DAYS);
         log.info("Starting cleanup scheduler task for soft-deleted posts and accounts (cutoff: {})", cutoff);
 
         try {

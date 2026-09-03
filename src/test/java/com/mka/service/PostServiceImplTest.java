@@ -22,7 +22,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -109,7 +110,7 @@ class PostServiceImplTest {
                 .status(PostStatus.ACTIVE)
                 .likeCount(0L)
                 .commentCount(0L)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         lenient().when(commentRepository.findByCustomTopicNameIgnoreCaseAndParentCommentIsNullAndStatus(any(), any(), any()))
@@ -165,7 +166,7 @@ class PostServiceImplTest {
     @Test
     void testGetFeed_AuthenticatedUser_UsesBatchQueriesSingleTime() {
         Pageable pageable = PageRequest.of(0, 10);
-        Post post2 = Post.builder().id(20L).user(testUser).originalContent("Second Post").status(PostStatus.ACTIVE).createdAt(LocalDateTime.now().minusHours(1)).build();
+        Post post2 = Post.builder().id(20L).user(testUser).originalContent("Second Post").status(PostStatus.ACTIVE).createdAt(Instant.now().minus(1, ChronoUnit.HOURS)).build();
         Page<Post> page = new PageImpl<>(List.of(testPost, post2));
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));

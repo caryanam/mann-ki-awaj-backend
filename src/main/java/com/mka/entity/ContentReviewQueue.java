@@ -3,7 +3,7 @@ package com.mka.entity;
 import com.mka.enums.ReviewStatus;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "content_review_queue")
@@ -32,13 +32,13 @@ public class ContentReviewQueue {
     private ReviewStatus status = ReviewStatus.PENDING_REVIEW;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime reviewedAt;
+    private Instant reviewedAt;
 
     public ContentReviewQueue() {}
 
-    public ContentReviewQueue(Long id, String contentType, Long contentId, String contentSnippet, String flaggedReason, Double aiConfidenceScore, ReviewStatus status, LocalDateTime createdAt, LocalDateTime reviewedAt) {
+    public ContentReviewQueue(Long id, String contentType, Long contentId, String contentSnippet, String flaggedReason, Double aiConfidenceScore, ReviewStatus status, Instant createdAt, Instant reviewedAt) {
         this.id = id;
         this.contentType = contentType;
         this.contentId = contentId;
@@ -52,7 +52,7 @@ public class ContentReviewQueue {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     public Long getId() { return id; }
@@ -76,11 +76,11 @@ public class ContentReviewQueue {
     public ReviewStatus getStatus() { return status; }
     public void setStatus(ReviewStatus status) { this.status = status; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getReviewedAt() { return reviewedAt; }
-    public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
+    public Instant getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(Instant reviewedAt) { this.reviewedAt = reviewedAt; }
 
     public static ContentReviewQueueBuilder builder() { return new ContentReviewQueueBuilder(); }
 
@@ -92,8 +92,8 @@ public class ContentReviewQueue {
         private String flaggedReason;
         private Double aiConfidenceScore;
         private ReviewStatus status = ReviewStatus.PENDING_REVIEW;
-        private LocalDateTime createdAt;
-        private LocalDateTime reviewedAt;
+        private Instant createdAt;
+        private Instant reviewedAt;
 
         public ContentReviewQueueBuilder id(Long id) { this.id = id; return this; }
         public ContentReviewQueueBuilder contentType(String contentType) { this.contentType = contentType; return this; }
@@ -102,8 +102,8 @@ public class ContentReviewQueue {
         public ContentReviewQueueBuilder flaggedReason(String flaggedReason) { this.flaggedReason = flaggedReason; return this; }
         public ContentReviewQueueBuilder aiConfidenceScore(Double aiConfidenceScore) { this.aiConfidenceScore = aiConfidenceScore; return this; }
         public ContentReviewQueueBuilder status(ReviewStatus status) { this.status = status; return this; }
-        public ContentReviewQueueBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
-        public ContentReviewQueueBuilder reviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; return this; }
+        public ContentReviewQueueBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public ContentReviewQueueBuilder reviewedAt(Instant reviewedAt) { this.reviewedAt = reviewedAt; return this; }
 
         public ContentReviewQueue build() {
             return new ContentReviewQueue(id, contentType, contentId, contentSnippet, flaggedReason, aiConfidenceScore, status, createdAt, reviewedAt);

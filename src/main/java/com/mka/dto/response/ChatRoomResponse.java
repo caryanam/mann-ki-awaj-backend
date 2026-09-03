@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -23,13 +23,13 @@ public class ChatRoomResponse {
     private Long otherParticipantId;
     private String otherParticipantUsername;
     private String otherParticipantAvatar;
-    private LocalDateTime otherParticipantLastSeen;
+    private Instant otherParticipantLastSeen;
     private Boolean otherParticipantIsOnline;
     private ChatMessageResponse lastMessage;
     private Long unreadCount;
     private Boolean hasUnread;
     private String requestStatus;
     private Long requestSenderId;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

@@ -30,8 +30,8 @@ public class AdminMusicTrackResponse {
     private MusicTrackSource source;
     private Boolean featured;
     private Integer sortOrder;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
     private LocalDateTime publishedAt;
     private LocalDateTime reviewedAt;
     private String rejectionReason;

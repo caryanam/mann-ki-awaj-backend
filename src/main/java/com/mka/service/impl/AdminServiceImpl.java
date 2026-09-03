@@ -15,7 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 
 @Service
@@ -41,7 +42,7 @@ public class AdminServiceImpl implements AdminService {
         long blockedUsers = userRepository.countByActiveFalse();
 
         long totalPosts = postRepository.countByStatus(PostStatus.ACTIVE);
-        long todayPostsCount = postRepository.countByCreatedAtAfter(LocalDateTime.now().withHour(0).withMinute(0).withSecond(0));
+        long todayPostsCount = postRepository.countByCreatedAtAfter(Instant.now().truncatedTo(ChronoUnit.DAYS));
         long totalComments = commentRepository.count();
 
         long pendingReports = reportRepository.countByStatus(ReportStatus.PENDING);
@@ -101,7 +102,7 @@ public class AdminServiceImpl implements AdminService {
         if (request.getWarningLevel() == WarningLevel.FIRST && newCount < 2) {
             notifMsg = "⚠️ Strike 1 Warning: " + request.getMessage() + " (Note: Further violations will result in a 48-hour posting & messaging mute)";
         } else if (request.getWarningLevel() == WarningLevel.SECOND || newCount == 2) {
-            user.setMutedUntil(LocalDateTime.now().plusHours(48));
+            user.setMutedUntil(Instant.now().plus(48, ChronoUnit.HOURS));
             notifMsg = "⛔ Strike 2 Warning: " + request.getMessage() + " (Effect: 48-Hour posting, commenting, and private messaging restriction applied)";
         } else {
             user.setActive(false);
@@ -279,7 +280,7 @@ public class AdminServiceImpl implements AdminService {
         ContentReviewQueue item = reviewQueueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue item not found with ID: " + id));
         item.setStatus(ReviewStatus.APPROVED);
-        item.setReviewedAt(LocalDateTime.now());
+        item.setReviewedAt(Instant.now());
         reviewQueueRepository.save(item);
 
         if ("POST".equalsIgnoreCase(item.getContentType())) {
@@ -301,7 +302,7 @@ public class AdminServiceImpl implements AdminService {
         ContentReviewQueue item = reviewQueueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue item not found with ID: " + id));
         item.setStatus(ReviewStatus.REJECTED);
-        item.setReviewedAt(LocalDateTime.now());
+        item.setReviewedAt(Instant.now());
         reviewQueueRepository.save(item);
 
         if ("POST".equalsIgnoreCase(item.getContentType())) {

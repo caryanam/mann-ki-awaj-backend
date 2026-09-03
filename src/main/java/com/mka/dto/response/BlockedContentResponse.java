@@ -1,7 +1,7 @@
 package com.mka.dto.response;
 
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -17,5 +17,5 @@ public class BlockedContentResponse {
     private String originalContent;
     private String flaggedReason;
     private String status;
-    private LocalDateTime blockedAt;
+    private Instant blockedAt;
 }

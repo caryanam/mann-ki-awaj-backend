@@ -9,7 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 
 @Data
@@ -55,5 +55,5 @@ public class PostResponse {
     private boolean isSavedByCurrentUser;
     private Boolean isMusicCommunity;
     private Long musicTrackId;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

@@ -176,7 +176,7 @@ class UserMusicServiceImplTest {
                 .rightsConfirmed(true).featured(false).sortOrder(0).uploadedBy(user)
                 .rejectionReason(status == MusicTrackStatus.REJECTED ? "Needs proof" : null).build();
         track.setId(42L);
-        track.setCreatedAt(LocalDateTime.now());
+        track.setCreatedAt(java.time.Instant.now());
         return track;
     }
 

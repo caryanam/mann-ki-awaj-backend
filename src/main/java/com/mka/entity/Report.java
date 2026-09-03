@@ -4,7 +4,7 @@ import com.mka.enums.ReportReason;
 import com.mka.enums.ReportStatus;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "reports")
@@ -36,13 +36,13 @@ public class Report {
     private ReportStatus status = ReportStatus.PENDING;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public Report() {}
 
-    public Report(Long id, User reporter, String contentType, Long contentId, ReportReason reason, String description, ReportStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Report(Long id, User reporter, String contentType, Long contentId, ReportReason reason, String description, ReportStatus status, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.reporter = reporter;
         this.contentType = contentType;
@@ -56,12 +56,12 @@ public class Report {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     public String getFormattedReportId() {
@@ -89,11 +89,11 @@ public class Report {
     public ReportStatus getStatus() { return status; }
     public void setStatus(ReportStatus status) { this.status = status; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static ReportBuilder builder() { return new ReportBuilder(); }
 
@@ -105,8 +105,8 @@ public class Report {
         private ReportReason reason;
         private String description;
         private ReportStatus status = ReportStatus.PENDING;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
+        private Instant createdAt;
+        private Instant updatedAt;
 
         public ReportBuilder id(Long id) { this.id = id; return this; }
         public ReportBuilder reporter(User reporter) { this.reporter = reporter; return this; }
@@ -115,8 +115,8 @@ public class Report {
         public ReportBuilder reason(ReportReason reason) { this.reason = reason; return this; }
         public ReportBuilder description(String description) { this.description = description; return this; }
         public ReportBuilder status(ReportStatus status) { this.status = status; return this; }
-        public ReportBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
-        public ReportBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+        public ReportBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public ReportBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Report build() {
             return new Report(id, reporter, contentType, contentId, reason, description, status, createdAt, updatedAt);

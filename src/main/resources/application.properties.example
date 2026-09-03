@@ -2,7 +2,7 @@
 spring.application.name=Mann-Ki-Aawaj
 server.port=${SERVER_PORT:8080}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.datasource.url=${DATABASE_URL:jdbc:mysql://localhost:3306/mann_ki_aawaj?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Kolkata}
+spring.datasource.url=${DATABASE_URL:jdbc:mysql://localhost:3306/mann_ki_aawaj?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
 spring.datasource.username=${DATABASE_USERNAME:root}
 spring.datasource.password=${DATABASE_PASSWORD:}
 spring.jpa.hibernate.ddl-auto=update
@@ -12,6 +12,9 @@ spring.flyway.baseline-version=0
 spring.jpa.show-sql=${JPA_SHOW_SQL:false}
 spring.jpa.properties.hibernate.format_sql=${JPA_FORMAT_SQL:false}
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+spring.jackson.time-zone=UTC
+spring.jackson.serialization.write-dates-as-timestamps=false
 music.storage.root=${MUSIC_STORAGE_ROOT:music-storage}
 music.storage.audio-dir=audio
 music.storage.cover-dir=covers

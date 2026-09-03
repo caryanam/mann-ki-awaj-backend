@@ -2,7 +2,7 @@ package com.mka.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "blocked_content")
@@ -41,10 +41,10 @@ public class BlockedContent {
     private String status = "PENDING"; // PENDING, WARNING_ISSUED
 
     @Column(name = "blocked_at", nullable = false)
-    private LocalDateTime blockedAt;
+    private Instant blockedAt;
 
     @PrePersist
     public void onCreate() {
-        this.blockedAt = LocalDateTime.now();
+        this.blockedAt = Instant.now();
     }
 }

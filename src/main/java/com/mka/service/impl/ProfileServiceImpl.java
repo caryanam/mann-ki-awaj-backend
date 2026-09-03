@@ -187,7 +187,7 @@ public class ProfileServiceImpl implements ProfileService {
 
                 profile.setUsername(newUsername);
                 profile.setUsernameChangeCount((profile.getUsernameChangeCount() == null ? 0 : profile.getUsernameChangeCount()) + 1);
-                profile.setUsernameLastChangedAt(java.time.LocalDateTime.now());
+                profile.setUsernameLastChangedAt(java.time.Instant.now());
             }
         }
 
