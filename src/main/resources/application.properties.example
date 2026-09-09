@@ -1,6 +1,8 @@
 # Copy to application.properties only for local development. Supply secrets through environment variables.
 spring.application.name=Mann-Ki-Aawaj
 server.port=${SERVER_PORT:8080}
+app.backend-base-url=${APP_BACKEND_BASE_URL:http://localhost:8080}
+server.forward-headers-strategy=framework
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.datasource.url=${DATABASE_URL:jdbc:mysql://localhost:3306/mann_ki_aawaj?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
 spring.datasource.username=${DATABASE_USERNAME:root}

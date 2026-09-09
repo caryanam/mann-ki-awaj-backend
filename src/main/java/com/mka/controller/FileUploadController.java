@@ -4,6 +4,7 @@ import com.mka.dto.response.ApiResponse;
 import com.mka.entity.User;
 import com.mka.repository.UserRepository;
 import com.mka.service.AiService;
+import com.mka.util.MediaUrlUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class FileUploadController {
 
         String imageUrl = aiService.moderateAndSaveImage(file, currentUser);
 
-        Map<String, String> data = Map.of("imageUrl", imageUrl);
+        Map<String, String> data = Map.of("imageUrl", MediaUrlUtils.toAbsoluteUrl(imageUrl));
 
         return ResponseEntity.ok(
                 ApiResponse.<Map<String, String>>builder()
