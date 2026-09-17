@@ -277,4 +277,110 @@ class AuthServiceImplTest {
         assertThrows(ValidationException.class, () -> authService.resetPassword(request));
         verify(userRepository, never()).save(any());
     }
+
+    @Test
+    void testLogin_WithMobileNumber_Success() {
+        LoginRequest request = LoginRequest.builder()
+                .identifier("9876543210")
+                .password("password123")
+                .build();
+
+        when(adminRepository.findByMobileNumber("9876543210")).thenReturn(Optional.empty());
+        when(userRepository.findByMobileNumber("9876543210")).thenReturn(Optional.of(testUser));
+        when(jwtService.generateToken("user@example.com", "USER")).thenReturn("mock.jwt.token");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("mock.jwt.token", response.getToken());
+        assertEquals("user@example.com", response.getEmail());
+    }
+
+    @Test
+    void testLogin_WithPrefixedMobileNumber_Success() {
+        LoginRequest request = LoginRequest.builder()
+                .identifier("+91 9876543210")
+                .password("password123")
+                .build();
+
+        when(adminRepository.findByMobileNumber("9876543210")).thenReturn(Optional.empty());
+        when(userRepository.findByMobileNumber("9876543210")).thenReturn(Optional.of(testUser));
+        when(jwtService.generateToken("user@example.com", "USER")).thenReturn("mock.jwt.token");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("mock.jwt.token", response.getToken());
+        assertEquals("user@example.com", response.getEmail());
+    }
+
+    @Test
+    void testLogin_WithLegacyUser_NullMobile_Success() {
+        User legacyUser = User.builder()
+                .id(2L)
+                .email("legacy@example.com")
+                .mobileNumber(null)
+                .password("encoded_pass")
+                .fullName("Legacy User")
+                .role(Role.USER)
+                .active(true)
+                .deleted(false)
+                .emailVerified(true)
+                .mobileVerified(false)
+                .build();
+
+        LoginRequest request = LoginRequest.builder()
+                .identifier("legacy@example.com")
+                .password("password123")
+                .build();
+
+        when(adminRepository.findByEmail("legacy@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("legacy@example.com")).thenReturn(Optional.of(legacyUser));
+        when(jwtService.generateToken("legacy@example.com", "USER")).thenReturn("mock.jwt.token");
+
+        AuthResponse response = authService.login(request);
+
+        assertNotNull(response);
+        assertEquals("mock.jwt.token", response.getToken());
+        assertEquals("legacy@example.com", response.getEmail());
+    }
+
+    @Test
+    void testRegister_DuplicateMobileNormalized_ThrowsResourceAlreadyExistsException() {
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("another@example.com");
+        request.setMobileNumber("+91 9876543210");
+        request.setPassword("password123");
+        request.setFullName("Another User");
+
+        when(userRepository.findByEmail("another@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByMobileNumber("9876543210")).thenReturn(Optional.of(testUser));
+
+        assertThrows(ResourceAlreadyExistsException.class, () -> authService.register(request));
+    }
+
+    @Test
+    void testRegister_InvalidMobile_ThrowsValidationException() {
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("user@example.com");
+        request.setMobileNumber("12345");
+        request.setPassword("password123");
+        request.setFullName("Test User");
+
+        assertThrows(ValidationException.class, () -> authService.register(request));
+    }
+
+    @Test
+    void testLogin_AccountNotFound_ThrowsResourceNotFoundException() {
+        LoginRequest request = LoginRequest.builder()
+                .identifier("unknown@example.com")
+                .password("password123")
+                .build();
+
+        when(adminRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByMobileNumber("unknown@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(com.mka.exception.ResourceNotFoundException.class, () -> authService.login(request));
+    }
 }

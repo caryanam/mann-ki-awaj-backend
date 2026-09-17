@@ -23,6 +23,7 @@ import com.mka.repository.UserRepository;
 import com.mka.service.AuthService;
 import com.mka.service.EmailVerificationService;
 import com.mka.service.MobileVerificationService;
+import com.mka.util.PhoneNumberUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -62,7 +63,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String email = request.getEmail().trim().toLowerCase();
-        String mobile = request.getMobileNumber().trim();
+        String rawMobile = request.getMobileNumber();
+        String mobile = PhoneNumberUtil.normalizeMobile(rawMobile);
+
+        if (mobile == null) {
+            throw new ValidationException("Please enter a valid 10-digit Indian mobile number");
+        }
 
         // 1. Check if user already exists in permanent users table
         Optional<User> existingUserOpt = userRepository.findByEmail(email);
@@ -78,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
             userRepository.flush();
         }
 
-        // 2. Check if mobile number is used by another user
+        // 2. Check if normalized mobile number is used by another user
         Optional<User> userWithMobileOpt = userRepository.findByMobileNumber(mobile);
         if (userWithMobileOpt.isPresent()) {
             User userWithMobile = userWithMobileOpt.get();
@@ -147,10 +153,24 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String input = request.getEmail() != null ? request.getEmail().trim() : "";
+        final String input = request.getLoginIdentifier() != null ? request.getLoginIdentifier().trim() : "";
+        if (input.isEmpty()) {
+            throw new ValidationException("Email or mobile number is required");
+        }
+        String normalizedMobile = PhoneNumberUtil.normalizeMobile(input);
+        boolean isEmail = PhoneNumberUtil.isEmail(input);
 
-        // 1. Check Admin repository first
-        Optional<Admin> adminOpt = adminRepository.findByEmail(input.toLowerCase());
+        // 1. Check Admin repository first (support both Email & Mobile Number)
+        Optional<Admin> adminOpt = Optional.empty();
+        if (isEmail) {
+            adminOpt = adminRepository.findByEmail(input.toLowerCase());
+        } else if (normalizedMobile != null) {
+            adminOpt = adminRepository.findByMobileNumber(normalizedMobile);
+        } else {
+            adminOpt = adminRepository.findByEmail(input.toLowerCase())
+                    .or(() -> adminRepository.findByMobileNumber(input));
+        }
+
         if (adminOpt.isPresent()) {
             Admin admin = adminOpt.get();
             if (!admin.getActive() || admin.getDeleted()) {
@@ -172,12 +192,20 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 2. Check Standard User repository (support both Email & Mobile Number)
-        User user = userRepository.findByEmail(input.toLowerCase())
-                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
-
-        if (user == null) {
-            throw new ResourceNotFoundException("Account not found");
+        Optional<User> userOpt = Optional.empty();
+        if (isEmail) {
+            userOpt = userRepository.findByEmail(input.toLowerCase());
+        } else if (normalizedMobile != null) {
+            userOpt = userRepository.findByMobileNumber(normalizedMobile);
         }
+
+        // Fallback search if not matched by strict classification
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(input.toLowerCase())
+                    .or(() -> userRepository.findByMobileNumber(input));
+        }
+
+        User user = userOpt.orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         if (!user.getActive() || user.getDeleted()) {
             throw new UnauthorizedException("User account is inactive or deleted");
@@ -206,13 +234,30 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    private User findUserByIdentifier(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = input.trim();
+        String normalizedMobile = PhoneNumberUtil.normalizeMobile(trimmed);
+        if (PhoneNumberUtil.isEmail(trimmed)) {
+            return userRepository.findByEmail(trimmed.toLowerCase()).orElse(null);
+        }
+        if (normalizedMobile != null) {
+            Optional<User> byMobile = userRepository.findByMobileNumber(normalizedMobile);
+            if (byMobile.isPresent()) {
+                return byMobile.get();
+            }
+        }
+        return userRepository.findByEmail(trimmed.toLowerCase())
+                .orElseGet(() -> userRepository.findByMobileNumber(trimmed).orElse(null));
+    }
+
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
-
-        User user = userRepository.findByEmail(input.toLowerCase())
-                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+        User user = findUserByIdentifier(input);
 
         if (user == null) {
             throw new ResourceNotFoundException("Account not found");
@@ -230,9 +275,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public void verifyForgotPasswordOtp(VerifyForgotPasswordOtpRequest request) {
         String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
-
-        User user = userRepository.findByEmail(input.toLowerCase())
-                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+        User user = findUserByIdentifier(input);
 
         if (user == null) {
             throw new ResourceNotFoundException("Account not found");
@@ -257,9 +300,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         String input = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
-
-        User user = userRepository.findByEmail(input.toLowerCase())
-                .orElseGet(() -> userRepository.findByMobileNumber(input).orElse(null));
+        User user = findUserByIdentifier(input);
 
         if (user == null) {
             throw new ResourceNotFoundException("Account not found");
