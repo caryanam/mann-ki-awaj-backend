@@ -269,4 +269,53 @@ class PostServiceImplTest {
         verify(postLikeRepository, never()).findLikedPostIdsByUserIdAndPostIdIn(anyLong(), anyList());
         verify(savedPostRepository, never()).findSavedPostIdsByUserIdAndPostIdIn(anyLong(), anyList());
     }
+
+    @Test
+    void testCreateVoiceNotePost_Success() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(profileRepository.findByUser(testUser)).thenReturn(Optional.of(testProfile));
+        when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
+            Post saved = invocation.getArgument(0);
+            saved.setId(99L);
+            saved.setCreatedAt(Instant.now());
+            return saved;
+        });
+
+        CreatePostRequest request = CreatePostRequest.builder()
+                .title("My Voice Note")
+                .content("Recorded audio")
+                .type(PostType.VOICE_NOTE)
+                .audioUrl("/uploads/test-audio.wav")
+                .isMusicCommunity(true)
+                .topic("MUSIC")
+                .mood("NEUTRAL")
+                .build();
+
+        PostResponse response = postService.createPost("test@example.com", request);
+
+        assertNotNull(response);
+        assertEquals(99L, response.getId());
+        assertEquals("My Voice Note", response.getTitle());
+        assertEquals("/uploads/test-audio.wav", response.getAudioUrl());
+        assertEquals(PostType.VOICE_NOTE, response.getType());
+        assertTrue(response.getIsMusicCommunity());
+        verify(postRepository, times(1)).save(any(Post.class));
+    }
+
+    @Test
+    void testCreateVoiceNotePost_MissingAudioThrows() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(profileRepository.findByUser(testUser)).thenReturn(Optional.of(testProfile));
+
+        CreatePostRequest request = CreatePostRequest.builder()
+                .title("No Audio Voice Note")
+                .content("Missing audio")
+                .type(PostType.VOICE_NOTE)
+                .isMusicCommunity(true)
+                .topic("MUSIC")
+                .mood("NEUTRAL")
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> postService.createPost("test@example.com", request));
+    }
 }

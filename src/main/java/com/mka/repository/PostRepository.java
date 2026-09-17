@@ -21,7 +21,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByStatusAndIsMusicCommunityTrue(PostStatus status, Pageable pageable);
 
-    @org.springframework.data.jpa.repository.Query("SELECT p FROM Post p WHERE p.status = :status AND (p.isMusicCommunity = true OR (p.audioUrl IS NOT NULL AND p.audioUrl != ''))")
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Post p WHERE p.status = :status AND (p.isMusicCommunity = true OR (p.audioUrl IS NOT NULL AND TRIM(p.audioUrl) != '') OR p.musicTrackId IS NOT NULL OR p.type = com.mka.enums.PostType.VOICE_NOTE)")
     Page<Post> findMusicCommunityPosts(@org.springframework.data.repository.query.Param("status") PostStatus status, Pageable pageable);
 
 

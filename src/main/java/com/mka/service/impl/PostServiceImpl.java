@@ -142,15 +142,19 @@ public class PostServiceImpl implements PostService {
         }
 
         boolean isMusicCommunity = Boolean.TRUE.equals(request.getIsMusicCommunity());
+        String resolvedAudioUrl = request.getAudioUrl();
         if (isMusicCommunity) {
-            boolean hasAudio = request.getAudioUrl() != null && !request.getAudioUrl().trim().isBlank();
+            boolean hasAudio = resolvedAudioUrl != null && !resolvedAudioUrl.trim().isBlank();
             boolean hasTrack = request.getMusicTrackId() != null;
             if (!hasAudio && !hasTrack) {
                 throw new IllegalArgumentException("Music Community posts require a valid audio attachment, recorded voice note, or linked music track.");
             }
             if (hasTrack) {
-                musicTrackRepository.findByIdAndStatus(request.getMusicTrackId(), com.mka.enums.MusicTrackStatus.PUBLISHED)
+                com.mka.entity.MusicTrack linkedTrack = musicTrackRepository.findByIdAndStatus(request.getMusicTrackId(), com.mka.enums.MusicTrackStatus.PUBLISHED)
                         .orElseThrow(() -> new IllegalArgumentException("Linked music track was not found or is not currently published."));
+                if (!hasAudio && linkedTrack.getAudioStorageKey() != null) {
+                    resolvedAudioUrl = "/media/music/audio/" + linkedTrack.getAudioStorageKey();
+                }
             }
         }
 
@@ -168,7 +172,7 @@ public class PostServiceImpl implements PostService {
                 .subtopic(finalSubtopic)
                 .type(request.getType() != null ? request.getType() : PostType.TEXT)
                 .imageUrl(request.getImageUrl())
-                .audioUrl(request.getAudioUrl())
+                .audioUrl(resolvedAudioUrl)
                 .isMusicCommunity(isMusicCommunity)
                 .musicTrackId(request.getMusicTrackId())
                 .movieName(request.getMovieName())
@@ -368,6 +372,19 @@ public class PostServiceImpl implements PostService {
         postRepository.save(post);
     }
 
+    private String resolveAudioUrl(Post post) {
+        if (post == null) return null;
+        if (post.getAudioUrl() != null && !post.getAudioUrl().trim().isBlank()) {
+            return com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getAudioUrl());
+        }
+        if (post.getMusicTrackId() != null) {
+            return musicTrackRepository.findById(post.getMusicTrackId())
+                    .map(t -> com.mka.util.MediaUrlUtils.toAbsoluteUrl("/media/music/audio/" + t.getAudioStorageKey()))
+                    .orElse(null);
+        }
+        return null;
+    }
+
     private PostResponse mapPostToResponse(Post post, User currentUser, String targetLanguage) {
         String translated = post.getOriginalContent();
         String translatedTitle = post.getTitle();
@@ -449,6 +466,7 @@ public class PostServiceImpl implements PostService {
                 .type(post.getType())
                 .status(post.getStatus())
                 .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
+                .audioUrl(resolveAudioUrl(post))
                 .movieName(post.getMovieName())
                 .movieRating(post.getMovieRating())
                 .isSpoiler(post.getIsSpoiler())
@@ -538,7 +556,7 @@ public class PostServiceImpl implements PostService {
                 .type(post.getType())
                 .status(post.getStatus())
                 .imageUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getImageUrl()))
-                .audioUrl(com.mka.util.MediaUrlUtils.toAbsoluteUrl(post.getAudioUrl()))
+                .audioUrl(resolveAudioUrl(post))
                 .movieName(post.getMovieName())
                 .movieRating(post.getMovieRating())
                 .isSpoiler(post.getIsSpoiler())

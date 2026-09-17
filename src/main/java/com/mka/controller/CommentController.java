@@ -89,13 +89,26 @@ public class CommentController {
     @Operation(summary = "Get comments for a post with translation and nested replies")
     public ResponseEntity<ApiResponse<Page<CommentResponse>>> getCommentsByPostId(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable Long postId,
+            @PathVariable String postId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+        Long numericPostId;
+        try {
+            numericPostId = Long.parseLong(postId);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(
+                    ApiResponse.<Page<CommentResponse>>builder()
+                            .success(true)
+                            .message("Comments retrieved successfully")
+                            .data(Page.empty(PageRequest.of(page, size)))
+                            .build()
+            );
+        }
+
         String email = principal != null ? principal.getUsername() : null;
         Page<CommentResponse> comments = commentService.getCommentsByPostId(
-                email, postId, PageRequest.of(page, size, Sort.by("createdAt").ascending()));
+                email, numericPostId, PageRequest.of(page, size, Sort.by("createdAt").ascending()));
 
         return ResponseEntity.ok(
                 ApiResponse.<Page<CommentResponse>>builder()
