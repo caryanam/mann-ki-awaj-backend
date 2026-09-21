@@ -392,7 +392,7 @@ public class PostServiceImpl implements PostService {
         if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
             try {
                 if (translationService != null && post.getOriginalContent() != null && !post.getOriginalContent().isBlank()) {
-                    TranslationResponse response = translationService.translate(
+                    TranslationResponse response = translationService.translateForDisplay(
                             post.getOriginalContent(),
                             post.getOriginalLanguage(),
                             targetLanguage
@@ -408,7 +408,7 @@ public class PostServiceImpl implements PostService {
             if (post.getTitle() != null && !post.getTitle().isBlank()) {
                 try {
                     if (translationService != null) {
-                        TranslationResponse titleResp = translationService.translate(
+                        TranslationResponse titleResp = translationService.translateForDisplay(
                                 post.getTitle(),
                                 post.getOriginalLanguage(),
                                 targetLanguage
@@ -499,7 +499,7 @@ public class PostServiceImpl implements PostService {
         if (targetLanguage != null && !targetLanguage.equalsIgnoreCase(post.getOriginalLanguage())) {
             try {
                 if (translationService != null && post.getOriginalContent() != null && !post.getOriginalContent().isBlank()) {
-                    TranslationResponse response = translationService.translate(
+                    TranslationResponse response = translationService.translateForDisplay(
                             post.getOriginalContent(),
                             post.getOriginalLanguage(),
                             targetLanguage
@@ -515,7 +515,7 @@ public class PostServiceImpl implements PostService {
             if (post.getTitle() != null && !post.getTitle().isBlank()) {
                 try {
                     if (translationService != null) {
-                        TranslationResponse titleResp = translationService.translate(
+                        TranslationResponse titleResp = translationService.translateForDisplay(
                                 post.getTitle(),
                                 post.getOriginalLanguage(),
                                 targetLanguage
@@ -619,7 +619,7 @@ public class PostServiceImpl implements PostService {
                     && comment.getOriginalContent() != null
                     && !comment.getOriginalContent().isBlank()) {
                 try {
-                    TranslationResponse response = translationService.translate(
+                    TranslationResponse response = translationService.translateForDisplay(
                             comment.getOriginalContent(), comment.getOriginalLanguage(), targetLanguage);
                     if (response != null && response.getTranslatedText() != null) {
                         translated = response.getTranslatedText();

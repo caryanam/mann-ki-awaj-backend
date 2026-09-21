@@ -81,8 +81,7 @@ public class CommentServiceImpl implements CommentService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        post.setCommentCount((post.getCommentCount() != null ? post.getCommentCount() : 0) + 1);
-        postRepository.save(post);
+        postRepository.incrementCommentCount(postId);
 
         if (!post.getUser().getId().equals(user.getId())) {
             notificationService.createNotification(
@@ -161,8 +160,7 @@ public class CommentServiceImpl implements CommentService {
 
         Post post = parentComment.getPost();
         if (post != null) {
-            post.setCommentCount((post.getCommentCount() != null ? post.getCommentCount() : 0) + 1);
-            postRepository.save(post);
+            postRepository.incrementCommentCount(post.getId());
         }
 
         if (!parentComment.getUser().getId().equals(user.getId())) {
@@ -262,7 +260,7 @@ public class CommentServiceImpl implements CommentService {
             String translated = c.getOriginalContent();
             if (finalUserLang != null && !finalUserLang.equalsIgnoreCase(c.getOriginalLanguage())) {
                 try {
-                    TranslationResponse resp = translationService.translate(
+                    TranslationResponse resp = translationService.translateForDisplay(
                             c.getOriginalContent(),
                             c.getOriginalLanguage(),
                             finalUserLang
@@ -342,7 +340,7 @@ public class CommentServiceImpl implements CommentService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        Comment comment = commentRepository.findByIdAndStatus(id, CommentStatus.ACTIVE)
+        Comment comment = commentRepository.findActiveForUpdate(id, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + id));
 
         if (!comment.getUser().getId().equals(user.getId())) {
@@ -354,9 +352,7 @@ public class CommentServiceImpl implements CommentService {
 
         Post post = comment.getPost();
         if (post != null) {
-            long current = post.getCommentCount() != null ? post.getCommentCount() : 0;
-            post.setCommentCount(Math.max(0, current - 1));
-            postRepository.save(post);
+            postRepository.decrementCommentCount(post.getId());
         }
     }
 
@@ -387,7 +383,7 @@ public class CommentServiceImpl implements CommentService {
         String translated = comment.getOriginalContent();
         if (userLang != null && !userLang.equalsIgnoreCase(comment.getOriginalLanguage())) {
             try {
-                TranslationResponse resp = translationService.translate(
+                TranslationResponse resp = translationService.translateForDisplay(
                         comment.getOriginalContent(),
                         comment.getOriginalLanguage(),
                         userLang

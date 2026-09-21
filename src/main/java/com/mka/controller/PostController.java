@@ -126,7 +126,7 @@ public class PostController {
             sort = sort.and(Sort.by(sortDirection, "id"));
         }
         String email = principal != null ? principal.getUsername() : null;
-        Page<PostResponse> feed = postService.getFeed(email, topic, community, PageRequest.of(page, size, sort));
+        Page<PostResponse> feed = postService.getFeed(email, topic, community, com.mka.util.PageLimits.of(page, size, sort));
 
         return ResponseEntity.ok(
                 ApiResponse.<Page<PostResponse>>builder()

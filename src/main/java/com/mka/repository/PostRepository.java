@@ -12,6 +12,10 @@ import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select p from Post p where p.id = :id and p.status = :status")
+    Optional<Post> findActiveForUpdate(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("status") PostStatus status);
 
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
 

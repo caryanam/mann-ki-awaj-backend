@@ -40,7 +40,7 @@ public class LikeServiceImpl implements LikeService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
+        Post post = postRepository.findActiveForUpdate(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
         if (!postLikeRepository.existsByPostIdAndUserId(postId, user.getId())) {
@@ -78,7 +78,7 @@ public class LikeServiceImpl implements LikeService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        Post post = postRepository.findByIdAndStatus(postId, PostStatus.ACTIVE)
+        Post post = postRepository.findActiveForUpdate(postId, PostStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found with id: " + postId));
 
         postLikeRepository.findByPostIdAndUserId(postId, user.getId()).ifPresent(like -> {
@@ -93,7 +93,7 @@ public class LikeServiceImpl implements LikeService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        Comment comment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
+        Comment comment = commentRepository.findActiveForUpdate(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
         if (!commentLikeRepository.existsByCommentIdAndUserId(commentId, user.getId())) {
@@ -103,8 +103,7 @@ public class LikeServiceImpl implements LikeService {
                     .build();
             commentLikeRepository.save(like);
 
-            comment.setLikeCount((comment.getLikeCount() != null ? comment.getLikeCount() : 0) + 1);
-            commentRepository.save(comment);
+            commentRepository.incrementLikeCount(commentId);
 
             if (!comment.getUser().getId().equals(user.getId())) {
                 Profile profile = profileRepository.findByUser(user).orElse(null);
@@ -128,14 +127,12 @@ public class LikeServiceImpl implements LikeService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        Comment comment = commentRepository.findByIdAndStatus(commentId, CommentStatus.ACTIVE)
+        Comment comment = commentRepository.findActiveForUpdate(commentId, CommentStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
         commentLikeRepository.findByCommentIdAndUserId(commentId, user.getId()).ifPresent(like -> {
             commentLikeRepository.delete(like);
-            long current = comment.getLikeCount() != null ? comment.getLikeCount() : 0;
-            comment.setLikeCount(Math.max(0, current - 1));
-            commentRepository.save(comment);
+            commentRepository.decrementLikeCount(commentId);
         });
     }
 }

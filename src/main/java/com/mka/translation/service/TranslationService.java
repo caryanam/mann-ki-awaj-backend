@@ -14,6 +14,9 @@ public interface TranslationService {
      */
     TranslationResponse translate(String text, String sourceLanguage, String targetLanguage);
 
+    /** Returns immediately with cached/original text; warms missing translations off the request thread. */
+    TranslationResponse translateForDisplay(String text, String sourceLanguage, String targetLanguage);
+
     /**
      * Batch translates a list of texts in a single execution.
      */

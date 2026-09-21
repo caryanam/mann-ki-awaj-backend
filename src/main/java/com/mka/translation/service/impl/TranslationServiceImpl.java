@@ -33,6 +33,59 @@ public class TranslationServiceImpl implements TranslationService {
     private final java.util.Map<String, String> syncCache = java.util.Collections.synchronizedMap(translationCache);
 
     private final OpenAITranslationProvider openAiProvider;
+    private final java.util.Set<String> pending = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.Map<String, Long> retryAfter = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, Long>(128, 0.75f, true) {
+                @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, Long> entry) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            });
+    private final java.util.concurrent.ThreadPoolExecutor displayWorkers = new java.util.concurrent.ThreadPoolExecutor(
+            2, 2, 30, java.util.concurrent.TimeUnit.SECONDS,
+            new java.util.concurrent.ArrayBlockingQueue<>(128), runnable -> {
+                Thread thread = new Thread(runnable, "display-translation");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+
+    @jakarta.annotation.PreDestroy
+    public void close() {
+        displayWorkers.shutdownNow();
+    }
+
+    @Override
+    public TranslationResponse translateForDisplay(String text, String sourceLanguage, String targetLanguage) {
+        TranslationResponse fallback = TranslationResponse.fallback(text, sourceLanguage, targetLanguage);
+        if (text == null || text.isBlank() || sourceLanguage == null || targetLanguage == null
+                || sourceLanguage.equalsIgnoreCase(targetLanguage)) return fallback;
+        String cleanText = sanitizeEncodedSymbols(text.trim());
+        String key = sourceLanguage.trim().toUpperCase(java.util.Locale.ROOT) + ":"
+                + targetLanguage.trim().toUpperCase(java.util.Locale.ROOT) + ":" + cleanText;
+        String cached = syncCache.get(key);
+        if (cached != null) {
+            return TranslationResponse.builder().originalText(text).translatedText(cached)
+                    .sourceLanguage(sourceLanguage).targetLanguage(targetLanguage).engine("cache").cached(true).build();
+        }
+        if (retryAfter.getOrDefault(key, 0L) > System.currentTimeMillis() || !pending.add(key)) return fallback;
+        try {
+            displayWorkers.execute(() -> {
+                try {
+                    TranslationResponse response = translate(cleanText, sourceLanguage, targetLanguage);
+                    if (response == null || "fallback".equals(response.getEngine())) {
+                        retryAfter.put(key, System.currentTimeMillis() + 30000);
+                    }
+                } catch (Exception ex) {
+                    retryAfter.put(key, System.currentTimeMillis() + 30000);
+                } finally {
+                    pending.remove(key);
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException ex) {
+            pending.remove(key);
+            // Saturated translation workers must never block feed/comment requests.
+        }
+        return fallback;
+    }
 
     public TranslationServiceImpl(OpenAITranslationProvider openAiProvider) {
         this.openAiProvider = openAiProvider;
@@ -164,7 +217,10 @@ public class TranslationServiceImpl implements TranslationService {
             String tgt = targetLang != null ? targetLang.toLowerCase() : "en";
             String urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" + tgt + "&dt=t&q=" + encodedText;
             java.net.URI uri = java.net.URI.create(urlStr);
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(2000);
+            factory.setReadTimeout(3000);
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate(factory);
             java.util.List<?> response = restTemplate.getForObject(uri, java.util.List.class);
             if (response != null && !response.isEmpty() && response.get(0) instanceof java.util.List<?> parts) {
                 StringBuilder sb = new StringBuilder();

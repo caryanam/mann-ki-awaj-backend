@@ -63,7 +63,7 @@ public class CommentController {
             @RequestParam(defaultValue = "20") int size) {
         String email = principal != null ? principal.getUsername() : null;
         Page<CommentResponse> comments = commentService.getCommentsByTopicId(
-                email, topicId, PageRequest.of(page, size, Sort.by("createdAt").ascending()));
+                email, topicId, com.mka.util.PageLimits.of(page, size, Sort.by("createdAt").ascending()));
         return ResponseEntity.ok(ApiResponse.<Page<CommentResponse>>builder().success(true)
                 .message("Opinions retrieved successfully").data(comments).build());
     }
@@ -108,7 +108,7 @@ public class CommentController {
 
         String email = principal != null ? principal.getUsername() : null;
         Page<CommentResponse> comments = commentService.getCommentsByPostId(
-                email, numericPostId, PageRequest.of(page, size, Sort.by("createdAt").ascending()));
+                email, numericPostId, com.mka.util.PageLimits.of(page, size, Sort.by("createdAt").ascending()));
 
         return ResponseEntity.ok(
                 ApiResponse.<Page<CommentResponse>>builder()

@@ -46,7 +46,21 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             NotificationResponse resp = toResponse(saved);
             if (resp != null) {
-                socketIOServer.getRoomOperations("user_" + recipient.getId()).sendEvent("new_notification", resp);
+                Runnable publish = () -> {
+                    try {
+                        socketIOServer.getRoomOperations("user_" + recipient.getId()).sendEvent("new_notification", resp);
+                    } catch (Exception ex) {
+                        System.err.println("Failed to broadcast notification: " + ex.getMessage());
+                    }
+                };
+                if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                    org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                            new org.springframework.transaction.support.TransactionSynchronization() {
+                                @Override public void afterCommit() { publish.run(); }
+                            });
+                } else {
+                    publish.run();
+                }
             }
         } catch (Exception e) {
             System.err.println("Failed to broadcast real-time notification: " + e.getMessage());
