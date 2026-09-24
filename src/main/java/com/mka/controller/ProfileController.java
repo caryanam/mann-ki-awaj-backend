@@ -64,6 +64,16 @@ public class ProfileController {
         return ResponseEntity.ok(ApiResponse.success("Profile fetched successfully", response));
     }
 
+    @GetMapping("/check-username")
+    @Operation(summary = "Check Username Handle Availability")
+    public ResponseEntity<ApiResponse<com.mka.dto.response.UsernameAvailabilityResponse>> checkUsername(
+            @RequestParam(required = false) String username,
+            @AuthenticationPrincipal Object principalObj) {
+        Long userId = resolveUserId(principalObj);
+        com.mka.dto.response.UsernameAvailabilityResponse response = profileService.checkUsernameAvailability(username, userId);
+        return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
+    }
+
     @GetMapping("/{username}")
     @Operation(summary = "Get Public Profile by Username Handle")
     public ResponseEntity<ApiResponse<ProfileResponse>> getProfileByUsername(

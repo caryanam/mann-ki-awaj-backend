@@ -86,7 +86,7 @@ class ProfileServiceImplTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(profileRepository.findByUser(testUser)).thenReturn(Optional.empty());
-        when(profileRepository.existsByUsername("new_handle")).thenReturn(false);
+        when(profileRepository.existsByUsernameIgnoreCase("new_handle")).thenReturn(false);
         when(profileMapper.toEntity(any(), any())).thenReturn(testProfile);
         when(profileRepository.save(any(Profile.class))).thenReturn(testProfile);
         when(profileMapper.toResponse(any(Profile.class))).thenReturn(testProfileResponse);
@@ -105,7 +105,7 @@ class ProfileServiceImplTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(profileRepository.findByUser(testUser)).thenReturn(Optional.empty());
-        when(profileRepository.existsByUsername("taken_handle")).thenReturn(true);
+        when(profileRepository.existsByUsernameIgnoreCase("taken_handle")).thenReturn(true);
 
         assertThrows(ResourceAlreadyExistsException.class, () -> profileService.createProfile(1L, request));
     }
@@ -136,7 +136,7 @@ class ProfileServiceImplTest {
 
     @Test
     void testGetProfileByUsername_Success() {
-        when(profileRepository.findByUsername("test_handle")).thenReturn(Optional.of(testProfile));
+        when(profileRepository.findByUsernameIgnoreCase("test_handle")).thenReturn(Optional.of(testProfile));
         when(profileMapper.toResponse(testProfile)).thenReturn(testProfileResponse);
 
         ProfileResponse response = profileService.getProfileByUsername("test_handle");
@@ -147,7 +147,7 @@ class ProfileServiceImplTest {
 
     @Test
     void testGetProfileByUsername_NonExistent_ThrowsResourceNotFoundException() {
-        when(profileRepository.findByUsername("unknown_handle")).thenReturn(Optional.empty());
+        when(profileRepository.findByUsernameIgnoreCase("unknown_handle")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> profileService.getProfileByUsername("unknown_handle"));
     }
@@ -157,7 +157,7 @@ class ProfileServiceImplTest {
         User inactiveUser = User.builder().id(2L).active(false).deleted(true).build();
         Profile inactiveProfile = Profile.builder().id(11L).user(inactiveUser).username("inactive_handle").build();
 
-        when(profileRepository.findByUsername("inactive_handle")).thenReturn(Optional.of(inactiveProfile));
+        when(profileRepository.findByUsernameIgnoreCase("inactive_handle")).thenReturn(Optional.of(inactiveProfile));
 
         assertThrows(ResourceNotFoundException.class, () -> profileService.getProfileByUsername("inactive_handle"));
     }
@@ -172,7 +172,7 @@ class ProfileServiceImplTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(testProfile));
-        when(profileRepository.existsByUsername("updated_handle")).thenReturn(false);
+        when(profileRepository.existsByUsernameIgnoreCaseAndUserIdNot("updated_handle", 1L)).thenReturn(false);
         when(profileRepository.save(any(Profile.class))).thenReturn(testProfile);
         when(profileMapper.toResponse(any(Profile.class))).thenReturn(testProfileResponse);
 
@@ -210,5 +210,48 @@ class ProfileServiceImplTest {
         profileService.deleteProfile(1L);
 
         verify(profileRepository).delete(testProfile);
+    }
+
+    @Test
+    void testCheckUsernameAvailability_Available() {
+        when(profileRepository.existsByUsernameIgnoreCase("free_handle")).thenReturn(false);
+
+        com.mka.dto.response.UsernameAvailabilityResponse res = profileService.checkUsernameAvailability("free_handle", null);
+
+        assertNotNull(res);
+        assertTrue(res.isAvailable());
+        assertEquals("Username available", res.getMessage());
+        assertEquals("free_handle", res.getUsername());
+    }
+
+    @Test
+    void testCheckUsernameAvailability_Taken() {
+        when(profileRepository.existsByUsernameIgnoreCase("busy_handle")).thenReturn(true);
+
+        com.mka.dto.response.UsernameAvailabilityResponse res = profileService.checkUsernameAvailability("busy_handle", null);
+
+        assertNotNull(res);
+        assertFalse(res.isAvailable());
+        assertEquals("Username already taken", res.getMessage());
+    }
+
+    @Test
+    void testCheckUsernameAvailability_OwnUsername_ReturnsAvailable() {
+        when(profileRepository.findByUserId(1L)).thenReturn(Optional.of(testProfile));
+
+        com.mka.dto.response.UsernameAvailabilityResponse res = profileService.checkUsernameAvailability("test_handle", 1L);
+
+        assertNotNull(res);
+        assertTrue(res.isAvailable());
+        assertEquals("Username available", res.getMessage());
+    }
+
+    @Test
+    void testCheckUsernameAvailability_InvalidRegex() {
+        com.mka.dto.response.UsernameAvailabilityResponse res = profileService.checkUsernameAvailability("bad handle!", null);
+
+        assertNotNull(res);
+        assertFalse(res.isAvailable());
+        assertTrue(res.getMessage().contains("dot(.) and underscore(_)"));
     }
 }

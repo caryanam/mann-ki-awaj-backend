@@ -35,6 +35,17 @@ public class UsernameValidationUtil {
             "murder", "kill", "rape", "slut", "whore", "cunt", "dick", "pussy"
     ));
 
+    public static String normalizeUsername(String rawUsername) {
+        if (rawUsername == null) {
+            return null;
+        }
+        String clean = rawUsername.trim();
+        if (clean.startsWith("@")) {
+            clean = clean.substring(1);
+        }
+        return clean.toLowerCase(Locale.ROOT).trim();
+    }
+
     public static void validateUsername(String rawUsername) {
         validateUsername(rawUsername, null);
     }
@@ -47,10 +58,14 @@ public class UsernameValidationUtil {
             throw new ValidationException("Username handle cannot be empty.");
         }
 
-        String clean = rawUsername.trim().toLowerCase().replaceAll("^@", "");
+        String clean = normalizeUsername(rawUsername);
 
         if (clean.length() < 3 || clean.length() > 30) {
             throw new ValidationException("Username handle must be between 3 and 30 characters.");
+        }
+
+        if (!clean.matches("^[a-zA-Z0-9._]+$")) {
+            throw new ValidationException("Username handle can contain only letters, numbers, dot(.) and underscore(_)");
         }
 
         // 1. Abusive words check
@@ -82,7 +97,8 @@ public class UsernameValidationUtil {
      * Generates numbered available username suggestions when base username is taken
      */
     public static List<String> generateAvailableSuggestions(String baseUsername, ProfileRepository profileRepository) {
-        String cleanBase = baseUsername.trim().replaceAll("^@", "");
+        String cleanBase = normalizeUsername(baseUsername);
+        if (cleanBase == null || cleanBase.isBlank()) cleanBase = "anonymous";
         cleanBase = cleanBase.replaceAll("\\d+$", "");
         if (cleanBase.length() < 3) cleanBase = "anonymous";
 
@@ -94,7 +110,7 @@ public class UsernameValidationUtil {
             attempts++;
             int num = 10 + random.nextInt(90);
             String candidate = cleanBase + num;
-            if (!profileRepository.existsByUsername(candidate) && !suggestions.contains(candidate)) {
+            if (!profileRepository.existsByUsernameIgnoreCase(candidate) && !suggestions.contains(candidate)) {
                 suggestions.add(candidate);
             }
         }

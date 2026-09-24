@@ -15,7 +15,7 @@ public class ProfileMapper {
         }
         return Profile.builder()
                 .user(user)
-                .username(request.getUsername().trim())
+                .username(com.mka.util.UsernameValidationUtil.normalizeUsername(request.getUsername()))
                 .avatar(request.getAvatar() != null ? request.getAvatar() : "#6F405F")
                 .preferredLanguage(request.getPreferredLanguage() != null ? request.getPreferredLanguage() : "EN")
                 .bio(request.getBio() != null ? request.getBio().trim() : null)

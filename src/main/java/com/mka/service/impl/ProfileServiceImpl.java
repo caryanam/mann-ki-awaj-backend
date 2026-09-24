@@ -66,7 +66,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         String validLang = validateAndFormatLanguage(request.getPreferredLanguage());
-        String requestedUsername = request.getUsername().trim();
+        String requestedUsername = UsernameValidationUtil.normalizeUsername(request.getUsername());
 
         validateUsernameHandle(requestedUsername, user);
 
@@ -75,8 +75,7 @@ public class ProfileServiceImpl implements ProfileService {
         if (existingProfileOpt.isPresent()) {
             Profile profile = existingProfileOpt.get();
 
-            if (profileRepository.existsByUsername(requestedUsername) && 
-                !profile.getUsername().equalsIgnoreCase(requestedUsername)) {
+            if (profileRepository.existsByUsernameIgnoreCaseAndUserIdNot(requestedUsername, userId)) {
                 java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(requestedUsername, profileRepository);
                 String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
                 throw new ResourceAlreadyExistsException("Username handle @" + requestedUsername + " is already taken." + suggestionsStr);
@@ -93,13 +92,14 @@ public class ProfileServiceImpl implements ProfileService {
             return profileMapper.toResponse(savedProfile);
         }
 
-        if (profileRepository.existsByUsername(requestedUsername)) {
+        if (profileRepository.existsByUsernameIgnoreCase(requestedUsername)) {
             java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(requestedUsername, profileRepository);
             String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
             throw new ResourceAlreadyExistsException("Username handle @" + requestedUsername + " is already taken." + suggestionsStr);
         }
 
         Profile profile = profileMapper.toEntity(request, user);
+        profile.setUsername(requestedUsername);
         profile.setPreferredLanguage(validLang);
         profile.setUsernameChangeCount(0);
         Profile savedProfile = profileRepository.save(profile);
@@ -131,7 +131,8 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ProfileResponse getProfileByUsername(String username) {
-        Profile profile = profileRepository.findByUsername(username.trim())
+        String cleanUsername = UsernameValidationUtil.normalizeUsername(username);
+        Profile profile = profileRepository.findByUsernameIgnoreCase(cleanUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found with username: " + username));
 
         if (profile.getUser() != null && (!Boolean.TRUE.equals(profile.getUser().getActive()) || Boolean.TRUE.equals(profile.getUser().getDeleted()))) {
@@ -162,7 +163,7 @@ public class ProfileServiceImpl implements ProfileService {
                 ));
 
         if (request.getUsername() != null && !request.getUsername().isBlank()) {
-            String newUsername = request.getUsername().trim();
+            String newUsername = UsernameValidationUtil.normalizeUsername(request.getUsername());
 
             if (!newUsername.equalsIgnoreCase(profile.getUsername())) {
                 // 1. Validate real human names & abusive words (Local + AI Audit)
@@ -179,7 +180,7 @@ public class ProfileServiceImpl implements ProfileService {
                 }
 
                 // 3. Check availability & generate suggestions
-                if (profileRepository.existsByUsername(newUsername)) {
+                if (profileRepository.existsByUsernameIgnoreCaseAndUserIdNot(newUsername, userId)) {
                     java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(newUsername, profileRepository);
                     String suggestionsStr = suggestions.isEmpty() ? "" : " Available suggestions: " + String.join(", ", suggestions.stream().map(s -> "@" + s).toList());
                     throw new ResourceAlreadyExistsException("Username handle @" + newUsername + " is already taken." + suggestionsStr);
@@ -264,5 +265,66 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found for user id: " + userId));
         profileRepository.delete(profile);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.mka.dto.response.UsernameAvailabilityResponse checkUsernameAvailability(String username, Long currentUserId) {
+        String clean = UsernameValidationUtil.normalizeUsername(username);
+        if (clean == null || clean.isBlank()) {
+            return com.mka.dto.response.UsernameAvailabilityResponse.builder()
+                    .username(clean != null ? clean : "")
+                    .available(false)
+                    .message("Username handle cannot be empty.")
+                    .build();
+        }
+
+        // 1. Syntax, length & anonymity rules
+        User currentUser = currentUserId != null ? userRepository.findById(currentUserId).orElse(null) : null;
+        try {
+            validateUsernameHandle(clean, currentUser);
+        } catch (ValidationException ex) {
+            return com.mka.dto.response.UsernameAvailabilityResponse.builder()
+                    .username(clean)
+                    .available(false)
+                    .message(ex.getMessage())
+                    .build();
+        }
+
+        // 2. Check if current user already owns this username
+        if (currentUserId != null) {
+            java.util.Optional<Profile> currentProfile = profileRepository.findByUserId(currentUserId);
+            if (currentProfile.isPresent() && clean.equalsIgnoreCase(currentProfile.get().getUsername())) {
+                return com.mka.dto.response.UsernameAvailabilityResponse.builder()
+                        .username(clean)
+                        .available(true)
+                        .message("Username available")
+                        .build();
+            }
+        }
+
+        // 3. Database uniqueness check
+        boolean taken;
+        if (currentUserId != null) {
+            taken = profileRepository.existsByUsernameIgnoreCaseAndUserIdNot(clean, currentUserId);
+        } else {
+            taken = profileRepository.existsByUsernameIgnoreCase(clean);
+        }
+
+        if (taken) {
+            java.util.List<String> suggestions = UsernameValidationUtil.generateAvailableSuggestions(clean, profileRepository);
+            return com.mka.dto.response.UsernameAvailabilityResponse.builder()
+                    .username(clean)
+                    .available(false)
+                    .message("Username already taken")
+                    .suggestions(suggestions)
+                    .build();
+        }
+
+        return com.mka.dto.response.UsernameAvailabilityResponse.builder()
+                .username(clean)
+                .available(true)
+                .message("Username available")
+                .build();
     }
 }

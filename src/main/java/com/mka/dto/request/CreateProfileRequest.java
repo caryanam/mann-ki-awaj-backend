@@ -12,9 +12,9 @@ import lombok.*;
 public class CreateProfileRequest {
 
     @NotBlank(message = "Username handle is required")
-    @Size(min = 3, max = 30, message = "Username handle must be between 3 and 30 characters")
+    @Size(min = 3, max = 31, message = "Username handle must be between 3 and 30 characters")
     @Pattern(
-            regexp = "^[a-zA-Z0-9._]+$",
+            regexp = "^@?[a-zA-Z0-9._]+$",
             message = "Username handle can contain only letters, numbers, dot(.) and underscore(_)"
     )
     private String username;

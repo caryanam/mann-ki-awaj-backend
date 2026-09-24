@@ -19,4 +19,6 @@ public interface ProfileService {
     ProfileResponse updateLanguage(Long userId, String language);
 
     void deleteProfile(Long userId);
+
+    com.mka.dto.response.UsernameAvailabilityResponse checkUsernameAvailability(String username, Long currentUserId);
 }

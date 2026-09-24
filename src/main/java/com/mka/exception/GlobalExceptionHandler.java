@@ -114,6 +114,29 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        String fullError = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (ex.getRootCause() != null && ex.getRootCause().getMessage() != null) {
+            fullError += " " + ex.getRootCause().getMessage().toLowerCase();
+        }
+
+        String msg;
+        if (fullError.contains("uk_profiles_username") || fullError.contains("profiles.username") || (fullError.contains("duplicate") && fullError.contains("username"))) {
+            msg = "Username already taken";
+        } else {
+            msg = "A duplicate or conflicting resource already exists.";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("message", msg);
+        response.put("timestamp", LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, Object>> handleUnauthorizedException(UnauthorizedException ex) {
         Map<String, Object> response = new LinkedHashMap<>();
